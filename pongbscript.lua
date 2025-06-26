@@ -1,142 +1,200 @@
-
 local player = game.Players.LocalPlayer
 local uis = game:GetService("UserInputService")
-local rs = game:GetService("RunService")
 
 
-local autoCollect = false
+local collecting = false
+local collectingEnabled = false
 local delayTime = 1
 local checkpoint = nil
-local guiVisible = true
-local mode = "Chậm" 
 
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "BypassAutoGUI"
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "BetterAutoGui"
 gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui") 
 
 
-local frame = Instance.new("Frame")
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 380, 0, 240)
 frame.Position = UDim2.new(0, 50, 0.3, 0)
-frame.Size = UDim2.new(0, 320, 0, 220)
-frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
 frame.Active = true
 frame.Draggable = true
-frame.Parent = gui
+frame.ClipsDescendants = true
+frame.AnchorPoint = Vector2.new(0, 0)
+frame.BackgroundTransparency = 0
+frame.Name = "MainFrame"
+frame:ApplyStrokeMode(Enum.ApplyStrokeMode.Border)
+frame:ApplyCornerRadius(12)
 
 
-local closeBtn = Instance.new("TextButton")
-closeBtn.Text = "✕"
-closeBtn.Size = UDim2.new(0, 30, 0, 30)
-closeBtn.Position = UDim2.new(1, -35, 0, 5)
-closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeBtn.Parent = frame
+local sideTab = Instance.new("Frame", frame)
+sideTab.Size = UDim2.new(0, 90, 1, 0)
+sideTab.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+sideTab.BorderSizePixel = 0
+sideTab:ApplyCornerRadius(12)
+
+local uiList = Instance.new("UIListLayout", sideTab)
+uiList.FillDirection = Enum.FillDirection.Vertical
+uiList.SortOrder = Enum.SortOrder.LayoutOrder
+uiList.Padding = UDim.new(0, 8)
+
+local function createTabButton(name)
+	local btn = Instance.new("TextButton")
+	btn.Text = name
+	btn.Size = UDim2.new(1, -10, 0, 30)
+	btn.Position = UDim2.new(0, 5, 0, 0)
+	btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+	btn.TextColor3 = Color3.new(1,1,1)
+	btn.BorderSizePixel = 0
+	btn:ApplyCornerRadius(8)
+	return btn
+end
 
 
-local openBtn = Instance.new("TextButton")
-openBtn.Text = "✕"
-openBtn.Size = UDim2.new(0, 40, 0, 40)
-openBtn.Position = UDim2.new(0, 20, 0, 20)
-openBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-openBtn.Visible = false
-openBtn.Parent = gui
+local tabButtons = {}
+local pages = {}
+
+local contentFrame = Instance.new("Frame", frame)
+contentFrame.Position = UDim2.new(0, 95, 0, 0)
+contentFrame.Size = UDim2.new(1, -100, 1, 0)
+contentFrame.BackgroundTransparency = 1
+
+local function addTab(name)
+	local page = Instance.new("Frame", contentFrame)
+	page.Size = UDim2.new(1, 0, 1, 0)
+	page.Visible = false
+	page.BackgroundTransparency = 1
+
+	local btn = createTabButton(name)
+	btn.Parent = sideTab
+	btn.MouseButton1Click:Connect(function()
+		for _, p in pairs(pages) do p.Visible = false end
+		page.Visible = true
+	end)
+
+	table.insert(tabButtons, btn)
+	table.insert(pages, page)
+	return page
+end
 
 
-local tabMain = Instance.new("TextButton", frame)
-tabMain.Text = "Main"
-tabMain.Position = UDim2.new(0, 10, 0, 10)
-tabMain.Size = UDim2.new(0, 140, 0, 30)
+local mainTab = addTab("Main")
 
-local tabOther = Instance.new("TextButton", frame)
-tabOther.Text = "Other"
-tabOther.Position = UDim2.new(0, 170, 0, 10)
-tabOther.Size = UDim2.new(0, 140, 0, 30)
+local toggleBtn = Instance.new("TextButton", mainTab)
+toggleBtn.Text = "Bật Auto Collect"
+toggleBtn.Size = UDim2.new(1, -20, 0, 35)
+toggleBtn.Position = UDim2.new(0, 10, 0, 10)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(80, 130, 255)
+toggleBtn.TextColor3 = Color3.new(1,1,1)
+toggleBtn.BorderSizePixel = 0
+toggleBtn:ApplyCornerRadius(8)
 
+local statusLabel = Instance.new("TextLabel", mainTab)
+statusLabel.Text = "Trạng thái: Đã tắt"
+statusLabel.Size = UDim2.new(1, -20, 0, 25)
+statusLabel.Position = UDim2.new(0, 10, 0, 55)
+statusLabel.BackgroundTransparency = 1
+statusLabel.TextColor3 = Color3.new(1,1,1)
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-local mainFrame = Instance.new("Frame", frame)
-mainFrame.Position = UDim2.new(0, 10, 0, 50)
-mainFrame.Size = UDim2.new(1, -20, 1, -60)
-mainFrame.Visible = true
-mainFrame.BackgroundTransparency = 1
-
-local autoBtn = Instance.new("TextButton", mainFrame)
-autoBtn.Text = "Auto Collect (E)"
-autoBtn.Position = UDim2.new(0, 0, 0, 0)
-autoBtn.Size = UDim2.new(1, 0, 0, 30)
-
-local modeBtn = Instance.new("TextButton", mainFrame)
+local modeBtn = Instance.new("TextButton", mainTab)
 modeBtn.Text = "Tốc độ: Chậm"
-modeBtn.Position = UDim2.new(0, 0, 0, 40)
-modeBtn.Size = UDim2.new(1, 0, 0, 30)
+modeBtn.Size = UDim2.new(1, -20, 0, 30)
+modeBtn.Position = UDim2.new(0, 10, 0, 90)
+modeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+modeBtn.TextColor3 = Color3.new(1,1,1)
+modeBtn.BorderSizePixel = 0
+modeBtn:ApplyCornerRadius(6)
 
-local timeBox = Instance.new("TextBox", mainFrame)
-timeBox.PlaceholderText = "Nhập thời gian delay (giây)"
-timeBox.Position = UDim2.new(0, 0, 0, 80)
-timeBox.Size = UDim2.new(1, 0, 0, 30)
+local timeBox = Instance.new("TextBox", mainTab)
+timeBox.PlaceholderText = "Tùy chỉnh delay (giây)"
+timeBox.Position = UDim2.new(0, 10, 0, 130)
+timeBox.Size = UDim2.new(1, -20, 0, 30)
+timeBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+timeBox.TextColor3 = Color3.new(1,1,1)
+timeBox.BorderSizePixel = 0
+timeBox:ApplyCornerRadius(6)
 
 
-local otherFrame = Instance.new("Frame", frame)
-otherFrame.Position = mainFrame.Position
-otherFrame.Size = mainFrame.Size
-otherFrame.Visible = false
-otherFrame.BackgroundTransparency = 1
+local otherTab = addTab("Other")
 
-local saveBtn = Instance.new("TextButton", otherFrame)
+local saveBtn = Instance.new("TextButton", otherTab)
 saveBtn.Text = "Lưu Checkpoint"
-saveBtn.Position = UDim2.new(0, 0, 0, 0)
-saveBtn.Size = UDim2.new(1, 0, 0, 30)
+saveBtn.Size = UDim2.new(1, -20, 0, 30)
+saveBtn.Position = UDim2.new(0, 10, 0, 10)
+saveBtn.BackgroundColor3 = Color3.fromRGB(100, 150, 80)
+saveBtn.TextColor3 = Color3.new(1,1,1)
+saveBtn.BorderSizePixel = 0
+saveBtn:ApplyCornerRadius(6)
 
-local tpBtn = Instance.new("TextButton", otherFrame)
-tpBtn.Text = "Dịch chuyển về Checkpoint"
-tpBtn.Position = UDim2.new(0, 0, 0, 40)
-tpBtn.Size = UDim2.new(1, 0, 0, 30)
+local tpBtn = Instance.new("TextButton", otherTab)
+tpBtn.Text = "Dịch chuyển"
+tpBtn.Size = UDim2.new(1, -20, 0, 30)
+tpBtn.Position = UDim2.new(0, 10, 0, 50)
+tpBtn.BackgroundColor3 = Color3.fromRGB(200, 120, 60)
+tpBtn.TextColor3 = Color3.new(1,1,1)
+tpBtn.BorderSizePixel = 0
+tpBtn:ApplyCornerRadius(6)
 
 
-tabMain.MouseButton1Click:Connect(function()
-	mainFrame.Visible = true
-	otherFrame.Visible = false
+local deleteTab = addTab("Xóa GUI")
+local deleteBtn = Instance.new("TextButton", deleteTab)
+deleteBtn.Text = "Xóa GUI"
+deleteBtn.Size = UDim2.new(1, -20, 0, 35)
+deleteBtn.Position = UDim2.new(0, 10, 0, 20)
+deleteBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+deleteBtn.TextColor3 = Color3.new(1,1,1)
+deleteBtn.BorderSizePixel = 0
+deleteBtn:ApplyCornerRadius(6)
+
+deleteBtn.MouseButton1Click:Connect(function()
+	gui:Destroy()
 end)
 
-tabOther.MouseButton1Click:Connect(function()
-	mainFrame.Visible = false
-	otherFrame.Visible = true
-end)
 
-
+local speedMode = "Chậm"
 modeBtn.MouseButton1Click:Connect(function()
-	if mode == "Chậm" then
-		mode = "Nhanh"
+	if speedMode == "Chậm" then
+		speedMode = "Nhanh"
 		delayTime = 0.2
-	elseif mode == "Nhanh" then
-		mode = "Tùy chỉnh"
+	elseif speedMode == "Nhanh" then
+		speedMode = "Tùy chỉnh"
 		delayTime = tonumber(timeBox.Text) or 1
 	else
-		mode = "Chậm"
+		speedMode = "Chậm"
 		delayTime = 1
 	end
-	modeBtn.Text = "Tốc độ: " .. mode
+	modeBtn.Text = "Tốc độ: " .. speedMode
 end)
 
 
-uis.InputBegan:Connect(function(input, gpe)
-	if gpe then return end
+toggleBtn.MouseButton1Click:Connect(function()
+	collectingEnabled = not collectingEnabled
+	statusLabel.Text = collectingEnabled and "Trạng thái: Đang bật. Giữ phím E" or "Trạng thái: Đã tắt"
+end)
+
+
+uis.InputBegan:Connect(function(input)
+	if collectingEnabled and input.KeyCode == Enum.KeyCode.E then
+		collecting = true
+	end
+end)
+
+uis.InputEnded:Connect(function(input)
 	if input.KeyCode == Enum.KeyCode.E then
-		autoCollect = not autoCollect
-		autoBtn.Text = autoCollect and "Đang Auto Collect..." or "Auto Collect"
+		collecting = false
 	end
 end)
 
 
 task.spawn(function()
 	while true do
-		if autoCollect then
+		if collecting then
 			
-			uis.InputBegan:Fire(Enum.KeyCode.E, false)
+			print("[AUTO] Thu thập hoạt động...")
 		end
-		if mode == "Tùy chỉnh" then
+		if speedMode == "Tùy chỉnh" then
 			delayTime = tonumber(timeBox.Text) or 1
 		end
 		task.wait(delayTime)
@@ -163,12 +221,4 @@ tpBtn.MouseButton1Click:Connect(function()
 end)
 
 
-closeBtn.MouseButton1Click:Connect(function()
-	frame.Visible = false
-	openBtn.Visible = true
-end)
-
-openBtn.MouseButton1Click:Connect(function()
-	frame.Visible = true
-	openBtn.Visible = false
-end)
+pages[1].Visible = true
