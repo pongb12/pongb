@@ -1,14 +1,13 @@
--- Gắn script này vào LocalScript trong StarterPlayerScripts hoặc trong GUI
+
 local player = game.Players.LocalPlayer
 local uis = game:GetService("UserInputService")
 local rs = game:GetService("RunService")
 
--- Biến lưu
 local autoCollect = false
 local delayTime = 1
 local checkpoint = nil
 
--- GUI khởi tạo (nếu bạn muốn tạo bằng script)
+
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 gui.Name = "AutoGui"
 
@@ -18,7 +17,7 @@ frame.Size = UDim2.new(0, 220, 0, 250)
 frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 frame.BorderSizePixel = 0
 
--- MAIN tab
+
 local autoBtn = Instance.new("TextButton", frame)
 autoBtn.Text = "Auto Collect (E)"
 autoBtn.Position = UDim2.new(0, 10, 0, 10)
@@ -34,7 +33,6 @@ customTimeBox.PlaceholderText = "Nhập thời gian (giây)"
 customTimeBox.Position = UDim2.new(0, 10, 0, 90)
 customTimeBox.Size = UDim2.new(1, -20, 0, 30)
 
--- OTHER tab
 local saveBtn = Instance.new("TextButton", frame)
 saveBtn.Text = "Lưu Checkpoint"
 saveBtn.Position = UDim2.new(0, 10, 0, 140)
@@ -45,8 +43,7 @@ tpBtn.Text = "Dịch chuyển về Checkpoint"
 tpBtn.Position = UDim2.new(0, 10, 0, 180)
 tpBtn.Size = UDim2.new(1, -20, 0, 30)
 
--- Logic chọn tốc độ
-local mode = "Chậm" -- Chậm, Nhanh, Tùy chỉnh
+local mode = "Chậm" 
 modeDropdown.MouseButton1Click:Connect(function()
 	if mode == "Chậm" then
 		mode = "Nhanh"
@@ -61,7 +58,7 @@ modeDropdown.MouseButton1Click:Connect(function()
 	modeDropdown.Text = "Tốc độ: " .. mode
 end)
 
--- Bắt phím E để bật autoCollect
+
 uis.InputBegan:Connect(function(input, gpe)
 	if gpe then return end
 	if input.KeyCode == Enum.KeyCode.E then
@@ -70,12 +67,11 @@ uis.InputBegan:Connect(function(input, gpe)
 	end
 end)
 
--- Auto Collect loop
+
 task.spawn(function()
 	while true do
 		if autoCollect then
-			-- Giả lập nhấn E (nếu game cho phép)
-			-- hoặc gọi hàm thu thập (tùy vào game)
+			
 			uis.InputBegan:Fire(Enum.KeyCode.E, false)
 		end
 		if mode == "Tùy chỉnh" then
@@ -85,7 +81,7 @@ task.spawn(function()
 	end
 end)
 
--- Lưu Checkpoint
+
 saveBtn.MouseButton1Click:Connect(function()
 	local char = player.Character
 	if char and char:FindFirstChild("HumanoidRootPart") then
@@ -96,7 +92,7 @@ saveBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Teleport về Checkpoint
+
 tpBtn.MouseButton1Click:Connect(function()
 	local char = player.Character
 	if char and char:FindFirstChild("HumanoidRootPart") and checkpoint then
