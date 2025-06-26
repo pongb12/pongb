@@ -1,16 +1,14 @@
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
-local RS = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 
--- Biến hệ thống
 local collecting = false
 local collectingEnabled = false
 local delayTime = 1
-local checkpoint = nil
 local speedMode = "Chậm"
+local checkpoint = nil
 
 -- Tạo GUI
 local gui = Instance.new("ScreenGui")
@@ -18,40 +16,45 @@ gui.Name = "GardenAutoGUI"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 380, 0, 240)
+-- Khung chính
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 400, 0, 250)
 frame.Position = UDim2.new(0, 50, 0.3, 0)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
 frame.Active = true
 frame.Draggable = true
-frame.Parent = gui
 
 -- Tabs bên trái
 local tabBar = Instance.new("Frame", frame)
 tabBar.Size = UDim2.new(0, 90, 1, 0)
-tabBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+tabBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 tabBar.BorderSizePixel = 0
-
-local contentFrame = Instance.new("Frame", frame)
-contentFrame.Position = UDim2.new(0, 90, 0, 0)
-contentFrame.Size = UDim2.new(1, -90, 1, 0)
-contentFrame.BackgroundTransparency = 1
 
 local UIList = Instance.new("UIListLayout", tabBar)
 UIList.FillDirection = Enum.FillDirection.Vertical
 UIList.SortOrder = Enum.SortOrder.LayoutOrder
 UIList.Padding = UDim.new(0, 6)
 
+-- Khung nội dung bên phải
+local contentFrame = Instance.new("Frame", frame)
+contentFrame.Position = UDim2.new(0, 90, 0, 0)
+contentFrame.Size = UDim2.new(1, -90, 1, 0)
+contentFrame.BackgroundTransparency = 1
+
+-- Tab creator
+local pages = {}
+
 local function createTabButton(name)
 	local b = Instance.new("TextButton")
 	b.Text = name
-	b.Size = UDim2.new(1, -10, 0, 30)
+	b.Size = UDim2.new(1, -10, 0, 32)
 	b.Position = UDim2.new(0, 5, 0, 0)
-	b.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+	b.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 	b.TextColor3 = Color3.new(1,1,1)
+	b.TextScaled = true
+	b.Font = Enum.Font.SourceSansBold
 	b.BorderSizePixel = 0
-	b.AutoButtonColor = true
 	b.Parent = tabBar
 	return b
 end
@@ -64,9 +67,7 @@ local function createPage()
 	return page
 end
 
-local pages = {}
-
--- MAIN PAGE
+-- Main Tab
 local btnMain = createTabButton("Main")
 local pageMain = createPage()
 pages.Main = pageMain
@@ -74,25 +75,31 @@ pages.Main = pageMain
 local toggleBtn = Instance.new("TextButton", pageMain)
 toggleBtn.Text = "Bật Auto (Giữ E)"
 toggleBtn.Position = UDim2.new(0, 10, 0, 10)
-toggleBtn.Size = UDim2.new(1, -20, 0, 30)
+toggleBtn.Size = UDim2.new(1, -20, 0, 35)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(100, 120, 255)
 toggleBtn.TextColor3 = Color3.new(1,1,1)
+toggleBtn.Font = Enum.Font.SourceSansBold
+toggleBtn.TextScaled = true
+toggleBtn.BorderSizePixel = 0
 
 local modeBtn = Instance.new("TextButton", pageMain)
 modeBtn.Text = "Tốc độ: Chậm"
-modeBtn.Position = UDim2.new(0, 10, 0, 50)
+modeBtn.Position = UDim2.new(0, 10, 0, 60)
 modeBtn.Size = UDim2.new(1, -20, 0, 30)
 modeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 modeBtn.TextColor3 = Color3.new(1,1,1)
+modeBtn.BorderSizePixel = 0
 
 local customBox = Instance.new("TextBox", pageMain)
 customBox.PlaceholderText = "Delay (giây)"
-customBox.Position = UDim2.new(0, 10, 0, 90)
+customBox.Text = ""
+customBox.Position = UDim2.new(0, 10, 0, 100)
 customBox.Size = UDim2.new(1, -20, 0, 30)
 customBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 customBox.TextColor3 = Color3.new(1,1,1)
+customBox.BorderSizePixel = 0
 
--- CHECKPOINT PAGE
+-- Checkpoint Tab
 local btnOther = createTabButton("Checkpoint")
 local pageOther = createPage()
 pages.Other = pageOther
@@ -101,8 +108,9 @@ local saveBtn = Instance.new("TextButton", pageOther)
 saveBtn.Text = "Lưu Checkpoint"
 saveBtn.Position = UDim2.new(0, 10, 0, 10)
 saveBtn.Size = UDim2.new(1, -20, 0, 30)
-saveBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+saveBtn.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
 saveBtn.TextColor3 = Color3.new(1,1,1)
+saveBtn.BorderSizePixel = 0
 
 local tpBtn = Instance.new("TextButton", pageOther)
 tpBtn.Text = "Dịch chuyển"
@@ -110,20 +118,22 @@ tpBtn.Position = UDim2.new(0, 10, 0, 50)
 tpBtn.Size = UDim2.new(1, -20, 0, 30)
 tpBtn.BackgroundColor3 = Color3.fromRGB(200, 120, 60)
 tpBtn.TextColor3 = Color3.new(1,1,1)
+tpBtn.BorderSizePixel = 0
 
--- DELETE PAGE
+-- Delete Tab
 local btnDelete = createTabButton("Xóa GUI")
 local pageDelete = createPage()
 pages.Delete = pageDelete
 
 local delBtn = Instance.new("TextButton", pageDelete)
 delBtn.Text = "Xóa giao diện"
-delBtn.Position = UDim2.new(0, 10, 0, 30)
+delBtn.Position = UDim2.new(0, 10, 0, 40)
 delBtn.Size = UDim2.new(1, -20, 0, 35)
-delBtn.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+delBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
 delBtn.TextColor3 = Color3.new(1,1,1)
+delBtn.BorderSizePixel = 0
 
--- Tab switching
+-- Tab switching logic
 btnMain.MouseButton1Click:Connect(function()
 	for _, p in pairs(pages) do p.Visible = false end
 	pageMain.Visible = true
@@ -137,10 +147,9 @@ btnDelete.MouseButton1Click:Connect(function()
 	pageDelete.Visible = true
 end)
 
--- Mặc định mở tab main
 pageMain.Visible = true
 
--- Điều chỉnh tốc độ
+-- Toggle tốc độ
 modeBtn.MouseButton1Click:Connect(function()
 	if speedMode == "Chậm" then
 		speedMode = "Nhanh"
@@ -155,33 +164,32 @@ modeBtn.MouseButton1Click:Connect(function()
 	modeBtn.Text = "Tốc độ: " .. speedMode
 end)
 
--- Toggle Auto Collect
+-- Toggle bật/tắt auto
 toggleBtn.MouseButton1Click:Connect(function()
 	collectingEnabled = not collectingEnabled
-	toggleBtn.Text = collectingEnabled and "Đã bật (giữ E)" or "Bật Auto (Giữ E)"
+	toggleBtn.Text = collectingEnabled and "Đã bật (Giữ E)" or "Bật Auto (Giữ E)"
 end)
 
--- Bắt giữ phím E
+-- Giữ phím E
 UIS.InputBegan:Connect(function(input)
 	if input.KeyCode == Enum.KeyCode.E and collectingEnabled then
 		collecting = true
 	end
 end)
-
 UIS.InputEnded:Connect(function(input)
 	if input.KeyCode == Enum.KeyCode.E then
 		collecting = false
 	end
 end)
 
--- Auto Collect logic (Grow a Garden style)
+-- Auto collect loop (tương thích Grow A Garden)
 task.spawn(function()
 	while true do
 		if collecting then
-			local root = character:FindFirstChild("HumanoidRootPart")
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 			if root then
 				for _, obj in pairs(workspace:GetDescendants()) do
-					if obj:IsA("ProximityPrompt") and (obj.Parent.Position - root.Position).Magnitude < 10 then
+					if obj:IsA("ProximityPrompt") and (obj.Parent.Position - root.Position).Magnitude <= 10 then
 						fireproximityprompt(obj)
 					end
 				end
@@ -194,17 +202,20 @@ task.spawn(function()
 	end
 end)
 
--- Lưu checkpoint
+-- Checkpoint
 saveBtn.MouseButton1Click:Connect(function()
-	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if root then
 		checkpoint = root.Position
+		saveBtn.Text = "Đã lưu!"
+		task.delay(1, function()
+			saveBtn.Text = "Lưu Checkpoint"
+		end)
 	end
 end)
 
--- Dịch chuyển checkpoint
 tpBtn.MouseButton1Click:Connect(function()
-	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if root and checkpoint then
 		root.CFrame = CFrame.new(checkpoint)
 	end
