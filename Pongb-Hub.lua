@@ -72,7 +72,7 @@ confirmBtn.MouseButton1Click:Connect(function()
     if key == getgenv().PONGB_KEY then
         status.Text = "✔️ Đúng key, đang tải script..."
         gui:Destroy()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/yourusername/yourrepo/main/pongbhub.lua"))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/pongb12/pongb/refs/heads/main/PongbHub.lua"))()
     else
         status.Text = "❌ Sai key, thử lại!"
     end
