@@ -210,3 +210,89 @@ end)
 
 -- Hiển thị tab mặc định
 fadeTo("Steal")
+
+-- ===== PHẦN THÊM VÀO CUỐI SCRIPT HIỆN TẠI - KHÔNG SỬA CODE CŨ =====
+
+-- Anti-ban/kick system (thêm cuối file, không thay đổi code cũ)
+do
+    local AntiBan = {
+        Active = true,
+        LastCheck = 0,
+        
+        RandomNames = {"CoreGui", "PlayerNotification", "ChatSystem", "MobileControls"},
+        
+        SafeCheck = function(self)
+            -- Chỉ kiểm tra mỗi 30 giây
+            if tick() - self.LastCheck < 30 then return true end
+            self.LastCheck = tick()
+            
+            -- Kiểm tra anti-cheat
+            local unsafe = {"AntiCheat", "AC", "Badger", "VAC"}
+            for _, name in pairs(unsafe) do
+                if game:FindFirstChild(name) then
+                    return false
+                end
+            end
+            return true
+        end,
+        
+        HandleKick = function(self, code)
+            if code and code:find("BAC%-10261") then
+                task.wait(300) -- Đợi 5 phút
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId)
+            end
+        end,
+        
+        Camouflage = function(self)
+            -- Ngẫu nhiên hoá tên GUI
+            if math.random(1, 100) == 1 then
+                gui.Name = self.RandomNames[math.random(1, #self.RandomNames)]
+            end
+            
+            -- Fake hành vi
+            if player.Character and player.Character:FindFirstChild("Humanoid") then
+                local humanoid = player.Character.Humanoid
+                if math.random(1, 50) == 1 then
+                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+            end
+        end
+    }
+
+    -- Xử lý khi bị kick
+    game:GetService("Players").PlayerRemoving:Connect(function(p)
+        if p == player and AntiBan.Active then
+            AntiBan:HandleKick(p.KickMessage)
+        end
+    end)
+
+    -- Ẩn GUI khẩn cấp
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if input.KeyCode == Enum.KeyCode.F4 and not gameProcessed and AntiBan.Active then
+            gui.Enabled = not gui.Enabled
+        end
+    end)
+
+    -- Bảo vệ liên tục
+    spawn(function()
+        while AntiBan.Active and task.wait(10) do
+            if not AntiBan:SafeCheck() then
+                gui:Destroy()
+                AntiBan.Active = false
+                break
+            end
+            AntiBan:Camouflage()
+        end
+    end)
+
+    -- Ghi đè an toàn các hàm teleport
+    local oldTween = TweenService.Create
+    getgenv().TweenService.Create = function(self, ...)
+        if AntiBan.Active and AntiBan:SafeCheck() then
+            return oldTween(self, ...)
+        end
+        return nil
+    end
+end
+
+-- ===== KẾT THÚC PHẦN THÊM VÀO =====
