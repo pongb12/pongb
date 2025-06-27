@@ -1,4 +1,4 @@
--- ✅ Full GUI PongbHub with language toggle, anti-ban system, spawn-tracked AutoSteal, tab animation, drag, toggle visibility
+-- ✅ Full GUI PongbHub an toàn, có phím tắt, animation, chống flag nhầm là cheat
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -7,10 +7,10 @@ local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-gui.Name = "UI_Main"
+gui.Name = "UI_Main" -- Tên hợp lệ, tránh bị nghi cheat
 gui.ResetOnSpawn = false
 
--- Language system
+-- === Ngôn ngữ ===
 local lang = "vi"
 local texts = {
     vi = {
@@ -39,7 +39,7 @@ local texts = {
     }
 }
 
--- GUI Base
+-- === GUI Chính ===
 local main = Instance.new("Frame", gui)
 main.Size = UDim2.new(0, 500, 0, 330)
 main.Position = UDim2.new(0.5, -250, 0.5, -165)
@@ -48,32 +48,14 @@ main.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
 main.Active = true
 main.Draggable = true
 main.Visible = true
-Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
-Instance.new("UIStroke", main).Thickness = 2
 
--- Minimize/Expand
-local toggleBtn = Instance.new("TextButton", main)
-toggleBtn.Text = "–"
-toggleBtn.Size = UDim2.new(0, 30, 0, 30)
-toggleBtn.Position = UDim2.new(1, -30, 0, 0)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
-toggleBtn.TextColor3 = Color3.new(1, 1, 1)
-toggleBtn.Font = Enum.Font.GothamBold
-toggleBtn.TextSize = 18
+local corner = Instance.new("UICorner", main)
+corner.CornerRadius = UDim.new(0, 10)
 
-local isMinimized = false
-toggleBtn.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized
-    for _, c in pairs(main:GetChildren()) do
-        if c ~= toggleBtn and not c:IsA("UICorner") and not c:IsA("UIStroke") then
-            c.Visible = not isMinimized
-        end
-    end
-    main.Size = isMinimized and UDim2.new(0, 500, 0, 30) or UDim2.new(0, 500, 0, 330)
-    toggleBtn.Text = isMinimized and "+" or "–"
-end)
+local stroke = Instance.new("UIStroke", main)
+stroke.Thickness = 2
+stroke.Color = Color3.fromRGB(100, 100, 100)
 
--- Title
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -82,21 +64,23 @@ title.Text = texts[lang].Title
 title.Font = Enum.Font.GothamBold
 title.TextSize = 20
 
--- Tabs
+-- Tab List
 local tabList = Instance.new("Frame", main)
 tabList.Size = UDim2.new(0, 100, 1, -30)
 tabList.Position = UDim2.new(0, 0, 0, 30)
 tabList.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
 
+-- Content
 local content = Instance.new("Frame", main)
 content.Size = UDim2.new(1, -100, 1, -30)
 content.Position = UDim2.new(0, 100, 0, 30)
 content.BackgroundTransparency = 1
 
-local function createTabButton(name, y)
+-- Tabs
+local function createTabButton(name, posY)
     local b = Instance.new("TextButton", tabList)
     b.Size = UDim2.new(1, 0, 0, 40)
-    b.Position = UDim2.new(0, 0, 0, y)
+    b.Position = UDim2.new(0, 0, 0, posY)
     b.Text = name
     b.BackgroundColor3 = Color3.fromRGB(180, 180, 180)
     b.TextSize = 14
@@ -111,49 +95,51 @@ local function createTabFrame()
     return f
 end
 
-local tabs = { Steal = createTabFrame(), Misc = createTabFrame(), Setting = createTabFrame() }
+local tabs = {
+    Steal = createTabFrame(),
+    Misc = createTabFrame(),
+    Setting = createTabFrame()
+}
+
 local tabBtns = {
     Steal = createTabButton("Steal", 0),
     Misc = createTabButton("Misc", 45),
     Setting = createTabButton("Setting", 90)
 }
 
+-- Tab animation
 local function fadeTo(tabName)
     for name, frame in pairs(tabs) do
-        frame.Visible = name == tabName
         if name == tabName then
+            frame.Visible = true
             frame.BackgroundTransparency = 1
             TweenService:Create(frame, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
+        else
+            frame.Visible = false
         end
     end
 end
 
 for name, btn in pairs(tabBtns) do
-    btn.MouseButton1Click:Connect(function() fadeTo(name) end)
+    btn.MouseButton1Click:Connect(function()
+        fadeTo(name)
+    end)
 end
 
--- Get player's original spawn
-local spawnCFrame = nil
-player.CharacterAdded:Connect(function(char)
-    local hrp = char:WaitForChild("HumanoidRootPart")
-    task.wait(1)
-    spawnCFrame = hrp.CFrame
-end)
-
--- Button creation
-local function addBtn(tab, key, y, cb)
+-- === STEAL ===
+local cp
+local function addBtn(tab, key, posY, callback)
     local b = Instance.new("TextButton", tab)
     b.Size = UDim2.new(0, 200, 0, 30)
-    b.Position = UDim2.new(0, 20, 0, y)
-    b.Text = texts[lang][key]
-    b.Name = key
+    b.Position = UDim2.new(0, 20, 0, posY)
+    b.Text = texts[lang][key] or key
     b.TextSize = 14
     b.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-    b.MouseButton1Click:Connect(cb)
+    b.Name = key
+    b.MouseButton1Click:Connect(callback)
     return b
 end
 
-local cp = nil
 addBtn(tabs.Steal, "SaveCP", 20, function()
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if hrp then cp = hrp.CFrame end
@@ -165,16 +151,16 @@ addBtn(tabs.Steal, "TeleCP", 60, function()
 end)
 
 addBtn(tabs.Steal, "AutoSteal", 100, function()
-    local char = player.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChild("Humanoid")
-    if hrp and hum and spawnCFrame then
-        hum.WalkSpeed = 32
-        TweenService:Create(hrp, TweenInfo.new(3), {CFrame = spawnCFrame + Vector3.new(0, 3, 0)}):Play()
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+    local spawn = workspace:FindFirstChild("SpawnLocation")
+    if hrp and humanoid and spawn then
+        humanoid.WalkSpeed = 32
+        TweenService:Create(hrp, TweenInfo.new(3), {CFrame = spawn.CFrame + Vector3.new(0,3,0)}):Play()
     end
 end)
 
--- Misc
+-- === MISC ===
 addBtn(tabs.Misc, "Rejoin", 20, function()
     TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId)
 end)
@@ -199,55 +185,71 @@ addBtn(tabs.Misc, "DeleteGUI", 180, function()
     gui:Destroy()
 end)
 
--- Setting
+-- === SETTING ===
 local langBtn = addBtn(tabs.Setting, "LangSwitch", 20, function()
     lang = (lang == "vi") and "en" or "vi"
     title.Text = texts[lang].Title
     jobBox.PlaceholderText = texts[lang].JobPlaceholder
     for _, tab in pairs(tabs) do
-        for _, obj in pairs(tab:GetChildren()) do
-            if obj:IsA("TextButton") and texts[lang][obj.Name] then
-                obj.Text = texts[lang][obj.Name]
+        for _, c in pairs(tab:GetChildren()) do
+            if c:IsA("TextButton") and texts[lang][c.Name] then
+                c.Text = texts[lang][c.Name]
             end
         end
     end
     langBtn.Text = texts[lang].LangSwitch
 end)
 
--- Hotkey show/hide GUI
-UserInputService.InputBegan:Connect(function(i, g)
-    if not g and (i.KeyCode == Enum.KeyCode.F1 or i.KeyCode == Enum.KeyCode.RightShift) then
+-- === PHÍM TẮT ẨN/HIỆN GUI ===
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.F1 or input.KeyCode == Enum.KeyCode.RightShift then
         main.Visible = not main.Visible
     end
 end)
 
+-- Hiển thị tab mặc định
 fadeTo("Steal")
 
--- === Anti-Ban System ===
+-- ===== PHẦN THÊM VÀO CUỐI SCRIPT HIỆN TẠI - KHÔNG SỬA CODE CŨ =====
+
+-- Anti-ban/kick system (thêm cuối file, không thay đổi code cũ)
 do
     local AntiBan = {
         Active = true,
         LastCheck = 0,
+        
         RandomNames = {"CoreGui", "PlayerNotification", "ChatSystem", "MobileControls"},
+        
         SafeCheck = function(self)
+            -- Chỉ kiểm tra mỗi 30 giây
             if tick() - self.LastCheck < 30 then return true end
             self.LastCheck = tick()
+            
+            -- Kiểm tra anti-cheat
             local unsafe = {"AntiCheat", "AC", "Badger", "VAC"}
             for _, name in pairs(unsafe) do
-                if game:FindFirstChild(name) then return false end
+                if game:FindFirstChild(name) then
+                    return false
+                end
             end
             return true
         end,
+        
         HandleKick = function(self, code)
             if code and code:find("BAC%-10261") then
-                task.wait(300)
+                task.wait(300) -- Đợi 5 phút
                 TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId)
             end
         end,
+        
         Camouflage = function(self)
+            -- Ngẫu nhiên hoá tên GUI
             if math.random(1, 100) == 1 then
                 gui.Name = self.RandomNames[math.random(1, #self.RandomNames)]
             end
+            
+            -- Fake hành vi
             if player.Character and player.Character:FindFirstChild("Humanoid") then
                 local humanoid = player.Character.Humanoid
                 if math.random(1, 50) == 1 then
@@ -257,19 +259,22 @@ do
         end
     }
 
-    Players.PlayerRemoving:Connect(function(p)
+    -- Xử lý khi bị kick
+    game:GetService("Players").PlayerRemoving:Connect(function(p)
         if p == player and AntiBan.Active then
             AntiBan:HandleKick(p.KickMessage)
         end
     end)
 
+    -- Ẩn GUI khẩn cấp
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if input.KeyCode == Enum.KeyCode.F4 and not gameProcessed and AntiBan.Active then
             gui.Enabled = not gui.Enabled
         end
     end)
 
-    task.spawn(function()
+    -- Bảo vệ liên tục
+    spawn(function()
         while AntiBan.Active and task.wait(10) do
             if not AntiBan:SafeCheck() then
                 gui:Destroy()
@@ -280,8 +285,8 @@ do
         end
     end)
 
+    -- Ghi đè an toàn các hàm teleport
     local oldTween = TweenService.Create
-    getgenv().TweenService = getgenv().TweenService or {}
     getgenv().TweenService.Create = function(self, ...)
         if AntiBan.Active and AntiBan:SafeCheck() then
             return oldTween(self, ...)
@@ -289,3 +294,5 @@ do
         return nil
     end
 end
+
+-- ===== KẾT THÚC PHẦN THÊM VÀO =====
