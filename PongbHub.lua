@@ -1,4 +1,4 @@
--- PongbHub Premium - Auto Steal Tycoon, NoClip, Speed Control
+--PongbHub--
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
@@ -7,14 +7,14 @@ local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-gui.Name = "PongbHub_Pro"
+gui.Name = "PongbHub"
 gui.ResetOnSpawn = false
 
 -- Cấu hình ngôn ngữ
 local lang = "vi"
 local texts = {
     vi = {
-        Title = "PONGHUB PREMIUM",
+        Title = "PONGHUB",
         SaveCP = "LƯU VỊ TRÍ",
         TeleCP = "DỊCH CHUYỂN",
         AutoSteal = "AUTO STEAL",
@@ -29,7 +29,7 @@ local texts = {
         StealStatus = "TRẠNG THÁI: TẮT"
     },
     en = {
-        Title = "PONGHUB PREMIUM",
+        Title = "PONGHUB",
         SaveCP = "SAVE LOCATION",
         TeleCP = "TELEPORT",
         AutoSteal = "AUTO STEAL",
