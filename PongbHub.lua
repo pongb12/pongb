@@ -1,5 +1,5 @@
 --PongbHub--
-
+--Script by Pongb team--
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
@@ -32,7 +32,12 @@ local texts = {
         ConfigSaved = "Đã lưu cấu hình!",
         ConfigReset = "Đã đặt lại cấu hình!",
         CPSaved = "Đã lưu checkpoint!",
-        CPTeled = "Đã dịch chuyển đến checkpoint!"
+        CPTeled = "Đã dịch chuyển đến checkpoint!",
+        ZoomGUI = "Phóng to/Thu nhỏ GUI",
+        Shortcuts = "Phím tắt:",
+        ShortcutList = "F1: Ẩn/hiện GUI\nF4: Ẩn khẩn cấp\nShift phải: Ẩn/hiện GUI",
+        CurrentSpeed = "Tốc độ hiện tại: ",
+        SetSpeed = "Đặt tốc độ"
     },
     en = {
         Title = "PongbHub",
@@ -52,7 +57,12 @@ local texts = {
         ConfigSaved = "Config saved!",
         ConfigReset = "Config reset!",
         CPSaved = "Checkpoint saved!",
-        CPTeled = "Teleported to checkpoint!"
+        CPTeled = "Teleported to checkpoint!",
+        ZoomGUI = "Zoom GUI",
+        Shortcuts = "Shortcuts:",
+        ShortcutList = "F1: Toggle GUI\nF4: Emergency hide\nRight Shift: Toggle GUI",
+        CurrentSpeed = "Current speed: ",
+        SetSpeed = "Set speed"
     }
 }
 
@@ -61,15 +71,17 @@ local cp
 local autoStealActive = false
 local noClipActive = false
 local walkSpeed = 16
-local config = {
-    walkSpeed = walkSpeed,
-    lang = lang
-}
+local baseWalkSpeed = 16
+local isGUIMaximized = false
+local originalGUISize = UDim2.new(0, 500, 0, 330)
+local originalGUIPosition = UDim2.new(0.5, -250, 0.5, -165)
+local maximizedGUISize = UDim2.new(0, 600, 0, 400)
+local maximizedGUIPosition = UDim2.new(0.5, -300, 0.5, -200)
 
 -- === GUI Chính ===
 local main = Instance.new("Frame", gui)
-main.Size = UDim2.new(0, 500, 0, 330)
-main.Position = UDim2.new(0.5, -250, 0.5, -165)
+main.Size = originalGUISize
+main.Position = originalGUIPosition
 main.AnchorPoint = Vector2.new(0.5, 0.5)
 main.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
 main.Active = true
@@ -229,18 +241,52 @@ addToggleBtn(tabs.Steal, "AutoSteal", 100, function(active)
     autoStealActive = active
     if active then
         spawn(function()
+            local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+            if humanoid then
+                baseWalkSpeed = humanoid.WalkSpeed
+                humanoid.WalkSpeed = 32
+            end
+            
             while autoStealActive and player.Character do
                 local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-                local humanoid = player.Character:FindFirstChild("Humanoid")
+                humanoid = player.Character:FindFirstChild("Humanoid")
                 
                 if cp and hrp and humanoid then
-                    humanoid.WalkSpeed = walkSpeed
-                    hrp.CFrame = cp
-                    task.wait(1) -- Delay để tránh anti-teleport
+                    -- Di chuyển thông thường đến checkpoint
+                    local direction = (cp.Position - hrp.Position).Unit
+                    humanoid:MoveTo(cp.Position)
+                    
+                    -- Chờ đến khi gần checkpoint hoặc bị ngắt
+                    local reached = false
+                    local connection
+                    connection = humanoid.MoveToFinished:Connect(function(reached)
+                        if reached then
+                            connection:Disconnect()
+                            reached = true
+                        end
+                    end)
+                    
+                    -- Timeout sau 10 giây nếu không tới được
+                    local startTime = tick()
+                    while not reached and (tick() - startTime < 10) and autoStealActive do
+                        task.wait()
+                    end
+                    
+                    if connection then connection:Disconnect() end
                 end
-                task.wait()
+                task.wait(0.1)
+            end
+            
+            -- Khôi phục tốc độ ban đầu khi tắt Auto Steal
+            if player.Character and player.Character:FindFirstChild("Humanoid") then
+                player.Character.Humanoid.WalkSpeed = baseWalkSpeed
             end
         end)
+    else
+        -- Khôi phục tốc độ ban đầu khi tắt Auto Steal
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid.WalkSpeed = baseWalkSpeed
+        end
     end
 end)
 
@@ -278,13 +324,28 @@ addBtn(tabs.Misc, "DeleteGUI", 180, function()
 end)
 
 -- === SETTING ===
-local speedLabel = Instance.new("TextLabel", tabs.Setting)
-speedLabel.Size = UDim2.new(0, 200, 0, 20)
-speedLabel.Position = UDim2.new(0, 20, 0, 60)
-speedLabel.Text = texts[lang].WalkSpeed..": "..walkSpeed
-speedLabel.TextSize = 14
-speedLabel.BackgroundTransparency = 1
+-- Nút phóng to/thu nhỏ GUI
+addBtn(tabs.Setting, "ZoomGUI", 20, function()
+    isGUIMaximized = not isGUIMaximized
+    if isGUIMaximized then
+        main.Size = maximizedGUISize
+        main.Position = maximizedGUIPosition
+    else
+        main.Size = originalGUISize
+        main.Position = originalGUIPosition
+    end
+end)
 
+-- Hiển thị tốc độ hiện tại
+local speedDisplay = Instance.new("TextLabel", tabs.Setting)
+speedDisplay.Size = UDim2.new(0, 200, 0, 20)
+speedDisplay.Position = UDim2.new(0, 20, 0, 60)
+speedDisplay.Text = texts[lang].CurrentSpeed..walkSpeed
+speedDisplay.TextSize = 14
+speedDisplay.BackgroundTransparency = 1
+speedDisplay.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Thanh trượt tốc độ
 local speedSlider = Instance.new("TextBox", tabs.Setting)
 speedSlider.Size = UDim2.new(0, 200, 0, 30)
 speedSlider.Position = UDim2.new(0, 20, 0, 80)
@@ -296,10 +357,13 @@ local function updateWalkSpeed()
     local newSpeed = tonumber(speedSlider.Text)
     if newSpeed and newSpeed >= 16 and newSpeed <= 100 then
         walkSpeed = newSpeed
-        speedLabel.Text = texts[lang].WalkSpeed..": "..walkSpeed
+        speedDisplay.Text = texts[lang].CurrentSpeed..walkSpeed
         
         if player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.Humanoid.WalkSpeed = walkSpeed
+            -- Chỉ cập nhật nếu không đang trong chế độ Auto Steal
+            if not autoStealActive then
+                player.Character.Humanoid.WalkSpeed = walkSpeed
+            end
         end
     else
         speedSlider.Text = tostring(walkSpeed)
@@ -308,14 +372,39 @@ end
 
 speedSlider.FocusLost:Connect(updateWalkSpeed)
 
+-- Nút áp dụng tốc độ
+addBtn(tabs.Setting, "SetSpeed", 110, function()
+    updateWalkSpeed()
+    showNotification(texts[lang].Title, texts[lang].WalkSpeed.." "..walkSpeed)
+end)
+
+-- Chú thích phím tắt
+local shortcutsLabel = Instance.new("TextLabel", tabs.Setting)
+shortcutsLabel.Size = UDim2.new(0, 200, 0, 20)
+shortcutsLabel.Position = UDim2.new(0, 20, 0, 150)
+shortcutsLabel.Text = texts[lang].Shortcuts
+shortcutsLabel.TextSize = 14
+shortcutsLabel.BackgroundTransparency = 1
+shortcutsLabel.TextXAlignment = Enum.TextXAlignment.Left
+shortcutsLabel.Font = Enum.Font.GothamBold
+
+local shortcutsText = Instance.new("TextLabel", tabs.Setting)
+shortcutsText.Size = UDim2.new(0, 200, 0, 80)
+shortcutsText.Position = UDim2.new(0, 20, 0, 170)
+shortcutsText.Text = texts[lang].ShortcutList
+shortcutsText.TextSize = 12
+shortcutsText.BackgroundTransparency = 1
+shortcutsText.TextXAlignment = Enum.TextXAlignment.Left
+shortcutsText.TextYAlignment = Enum.TextYAlignment.Top
+
 -- Nút lưu/xóa cấu hình
-addBtn(tabs.Setting, "SaveConfig", 120, function()
+addBtn(tabs.Setting, "SaveConfig", 260, function()
     config.walkSpeed = walkSpeed
     config.lang = lang
     showNotification(texts[lang].Title, texts[lang].ConfigSaved)
 end)
 
-addBtn(tabs.Setting, "ResetConfig", 160, function()
+addBtn(tabs.Setting, "ResetConfig", 300, function()
     walkSpeed = 16
     speedSlider.Text = "16"
     updateWalkSpeed()
@@ -323,12 +412,14 @@ addBtn(tabs.Setting, "ResetConfig", 160, function()
 end)
 
 -- Nút chuyển ngôn ngữ
-local langBtn = addBtn(tabs.Setting, "LangSwitch", 20, function()
+local langBtn = addBtn(tabs.Setting, "LangSwitch", 220, function()
     lang = (lang == "vi") and "en" or "vi"
     title.Text = texts[lang].Title
     jobBox.PlaceholderText = texts[lang].JobPlaceholder
-    speedLabel.Text = texts[lang].WalkSpeed..": "..walkSpeed
+    speedDisplay.Text = texts[lang].CurrentSpeed..walkSpeed
     speedSlider.PlaceholderText = "16-100"
+    shortcutsLabel.Text = texts[lang].Shortcuts
+    shortcutsText.Text = texts[lang].ShortcutList
     
     for _, tab in pairs(tabs) do
         for _, c in pairs(tab:GetChildren()) do
@@ -352,6 +443,18 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     -- Ẩn khẩn cấp
     if input.KeyCode == Enum.KeyCode.F4 then
         gui.Enabled = not gui.Enabled
+    end
+    
+    -- Phóng to/thu nhỏ GUI
+    if input.KeyCode == Enum.KeyCode.F2 then
+        isGUIMaximized = not isGUIMaximized
+        if isGUIMaximized then
+            main.Size = maximizedGUISize
+            main.Position = maximizedGUIPosition
+        else
+            main.Size = originalGUISize
+            main.Position = originalGUIPosition
+        end
     end
 end)
 
