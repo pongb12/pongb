@@ -1,4 +1,4 @@
--- ✅ Full GUI PongbHub an toàn, có phím tắt, animation, chống flag nhầm là cheat
+-- ✅ Full GUI PongbHub an toàn, có phím tắt, animation, chống flag nhầm là cheat, auto-steal đúng điểm spawn người chơi
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -7,7 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-gui.Name = "UI_Main" -- Tên hợp lệ, tránh bị nghi cheat
+gui.Name = "UI_Main"
 gui.ResetOnSpawn = false
 
 -- === Ngôn ngữ ===
@@ -49,12 +49,8 @@ main.Active = true
 main.Draggable = true
 main.Visible = true
 
-local corner = Instance.new("UICorner", main)
-corner.CornerRadius = UDim.new(0, 10)
-
-local stroke = Instance.new("UIStroke", main)
-stroke.Thickness = 2
-stroke.Color = Color3.fromRGB(100, 100, 100)
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
+Instance.new("UIStroke", main).Thickness = 2
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 30)
@@ -126,8 +122,15 @@ for name, btn in pairs(tabBtns) do
     end)
 end
 
--- === STEAL ===
-local cp
+-- === Spawn chính xác của người chơi ===
+local spawnCFrame = nil
+player.CharacterAdded:Connect(function(char)
+    local hrp = char:WaitForChild("HumanoidRootPart")
+    task.wait(1)
+    spawnCFrame = hrp.CFrame
+end)
+
+-- === Nút ===
 local function addBtn(tab, key, posY, callback)
     local b = Instance.new("TextButton", tab)
     b.Size = UDim2.new(0, 200, 0, 30)
@@ -140,6 +143,7 @@ local function addBtn(tab, key, posY, callback)
     return b
 end
 
+local cp
 addBtn(tabs.Steal, "SaveCP", 20, function()
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if hrp then cp = hrp.CFrame end
@@ -153,14 +157,14 @@ end)
 addBtn(tabs.Steal, "AutoSteal", 100, function()
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
-    local spawn = workspace:FindFirstChild("SpawnLocation")
-    if hrp and humanoid and spawn then
+    if hrp and humanoid and spawnCFrame then
         humanoid.WalkSpeed = 32
-        TweenService:Create(hrp, TweenInfo.new(3), {CFrame = spawn.CFrame + Vector3.new(0,3,0)}):Play()
+        TweenService:Create(hrp, TweenInfo.new(3), {CFrame = spawnCFrame + Vector3.new(0,3,0)}):Play()
+    else
+        warn("Không có thông tin vị trí spawn ban đầu")
     end
 end)
 
--- === MISC ===
 addBtn(tabs.Misc, "Rejoin", 20, function()
     TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId)
 end)
@@ -185,7 +189,6 @@ addBtn(tabs.Misc, "DeleteGUI", 180, function()
     gui:Destroy()
 end)
 
--- === SETTING ===
 local langBtn = addBtn(tabs.Setting, "LangSwitch", 20, function()
     lang = (lang == "vi") and "en" or "vi"
     title.Text = texts[lang].Title
@@ -200,7 +203,7 @@ local langBtn = addBtn(tabs.Setting, "LangSwitch", 20, function()
     langBtn.Text = texts[lang].LangSwitch
 end)
 
--- === PHÍM TẮT ẨN/HIỆN GUI ===
+-- === Phím tắt ẩn/hiện GUI ===
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.F1 or input.KeyCode == Enum.KeyCode.RightShift then
@@ -208,48 +211,39 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Hiển thị tab mặc định
+-- Mặc định
 fadeTo("Steal")
 
 -- ===== PHẦN THÊM VÀO CUỐI SCRIPT HIỆN TẠI - KHÔNG SỬA CODE CŨ =====
+-- Anti-ban/kick system
 
--- Anti-ban/kick system (thêm cuối file, không thay đổi code cũ)
 do
     local AntiBan = {
         Active = true,
         LastCheck = 0,
-        
         RandomNames = {"CoreGui", "PlayerNotification", "ChatSystem", "MobileControls"},
-        
+
         SafeCheck = function(self)
-            -- Chỉ kiểm tra mỗi 30 giây
             if tick() - self.LastCheck < 30 then return true end
             self.LastCheck = tick()
-            
-            -- Kiểm tra anti-cheat
             local unsafe = {"AntiCheat", "AC", "Badger", "VAC"}
             for _, name in pairs(unsafe) do
-                if game:FindFirstChild(name) then
-                    return false
-                end
+                if game:FindFirstChild(name) then return false end
             end
             return true
         end,
-        
+
         HandleKick = function(self, code)
             if code and code:find("BAC%-10261") then
-                task.wait(300) -- Đợi 5 phút
+                task.wait(300)
                 TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId)
             end
         end,
-        
+
         Camouflage = function(self)
-            -- Ngẫu nhiên hoá tên GUI
             if math.random(1, 100) == 1 then
                 gui.Name = self.RandomNames[math.random(1, #self.RandomNames)]
             end
-            
-            -- Fake hành vi
             if player.Character and player.Character:FindFirstChild("Humanoid") then
                 local humanoid = player.Character.Humanoid
                 if math.random(1, 50) == 1 then
@@ -259,21 +253,18 @@ do
         end
     }
 
-    -- Xử lý khi bị kick
     game:GetService("Players").PlayerRemoving:Connect(function(p)
         if p == player and AntiBan.Active then
             AntiBan:HandleKick(p.KickMessage)
         end
     end)
 
-    -- Ẩn GUI khẩn cấp
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if input.KeyCode == Enum.KeyCode.F4 and not gameProcessed and AntiBan.Active then
             gui.Enabled = not gui.Enabled
         end
     end)
 
-    -- Bảo vệ liên tục
     spawn(function()
         while AntiBan.Active and task.wait(10) do
             if not AntiBan:SafeCheck() then
@@ -285,7 +276,6 @@ do
         end
     end)
 
-    -- Ghi đè an toàn các hàm teleport
     local oldTween = TweenService.Create
     getgenv().TweenService.Create = function(self, ...)
         if AntiBan.Active and AntiBan:SafeCheck() then
@@ -294,5 +284,3 @@ do
         return nil
     end
 end
-
--- ===== KẾT THÚC PHẦN THÊM VÀO =====
