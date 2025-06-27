@@ -1,4 +1,10 @@
----PongbHub---
+--PongbHub--
+local validKeys = {
+    ["Pongbhubscript"] = true,
+    ["memaybell"] = true,
+    ["joinnow"] = true
+}
+
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
@@ -69,7 +75,7 @@ confirmBtn.MouseButton1Click:Connect(function()
         status.Text = "⚠️ Vui lòng nhập key"
         return
     end
-    if key == getgenv().PONGB_KEY then
+    if validKeys[key] then
         status.Text = "✔️ Đúng key, đang tải script..."
         gui:Destroy()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/pongb12/pongb/refs/heads/main/PongbHub.lua"))()
