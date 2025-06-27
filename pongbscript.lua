@@ -1,227 +1,366 @@
 local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
-
+local TeleportService = game:GetService("TeleportService")
+local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
+
+-- Wait for character
 local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local hrp = character:WaitForChild("HumanoidRootPart")
 
-local collecting = false
-local collectingEnabled = false
-local delayTime = 1
-local speedMode = "Chậm"
-local checkpoint = nil
-
--- Tạo GUI
-local gui = Instance.new("ScreenGui")
-gui.Name = "GardenAutoGUI"
+-- Main GUI
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "PongbHub"
 gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
 
--- Khung chính
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 400, 0, 250)
-frame.Position = UDim2.new(0, 50, 0.3, 0)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BorderSizePixel = 0
-frame.Active = true
-frame.Draggable = true
+-- Settings
+local lastCheckpoint = nil
+local lang = "vi"
+local isMinimized = false
+local autoStealActive = false
+local autoStealConnection = nil
 
--- Tabs bên trái
-local tabBar = Instance.new("Frame", frame)
-tabBar.Size = UDim2.new(0, 90, 1, 0)
-tabBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-tabBar.BorderSizePixel = 0
+-- UI Theme
+local theme = {
+    Background = Color3.fromRGB(40, 40, 45),
+    Secondary = Color3.fromRGB(30, 30, 35),
+    Accent = Color3.fromRGB(0, 120, 215),
+    Text = Color3.fromRGB(240, 240, 240),
+    Warning = Color3.fromRGB(255, 100, 100),
+    Success = Color3.fromRGB(100, 255, 100)
+}
 
-local UIList = Instance.new("UIListLayout", tabBar)
-UIList.FillDirection = Enum.FillDirection.Vertical
-UIList.SortOrder = Enum.SortOrder.LayoutOrder
-UIList.Padding = UDim.new(0, 6)
-
--- Khung nội dung bên phải
-local contentFrame = Instance.new("Frame", frame)
-contentFrame.Position = UDim2.new(0, 90, 0, 0)
-contentFrame.Size = UDim2.new(1, -90, 1, 0)
-contentFrame.BackgroundTransparency = 1
-
--- Tab creator
-local pages = {}
-
-local function createTabButton(name)
-	local b = Instance.new("TextButton")
-	b.Text = name
-	b.Size = UDim2.new(1, -10, 0, 32)
-	b.Position = UDim2.new(0, 5, 0, 0)
-	b.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-	b.TextColor3 = Color3.new(1,1,1)
-	b.TextScaled = true
-	b.Font = Enum.Font.SourceSansBold
-	b.BorderSizePixel = 0
-	b.Parent = tabBar
-	return b
+-- Helper functions
+local function createCorner(parent, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius)
+    corner.Parent = parent
+    return corner
 end
 
-local function createPage()
-	local page = Instance.new("Frame", contentFrame)
-	page.Size = UDim2.new(1, 0, 1, 0)
-	page.BackgroundTransparency = 1
-	page.Visible = false
-	return page
+local function createStroke(parent, thickness, color)
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = thickness
+    stroke.Color = color
+    stroke.Parent = parent
+    return stroke
 end
 
--- Main Tab
-local btnMain = createTabButton("Main")
-local pageMain = createPage()
-pages.Main = pageMain
+local function createLabel(parent, text, size, position)
+    local label = Instance.new("TextLabel")
+    label.Text = text
+    label.Size = size
+    label.Position = position
+    label.BackgroundTransparency = 1
+    label.TextColor3 = theme.Text
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = parent
+    return label
+end
 
-local toggleBtn = Instance.new("TextButton", pageMain)
-toggleBtn.Text = "Bật Auto (Giữ E)"
-toggleBtn.Position = UDim2.new(0, 10, 0, 10)
-toggleBtn.Size = UDim2.new(1, -20, 0, 35)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(100, 120, 255)
-toggleBtn.TextColor3 = Color3.new(1,1,1)
-toggleBtn.Font = Enum.Font.SourceSansBold
-toggleBtn.TextScaled = true
-toggleBtn.BorderSizePixel = 0
+local function createButton(parent, text, size, position, callback)
+    local button = Instance.new("TextButton")
+    button.Text = text
+    button.Size = size
+    button.Position = position
+    button.BackgroundColor3 = theme.Accent
+    button.TextColor3 = theme.Text
+    button.Font = Enum.Font.GothamSemibold
+    button.TextSize = 14
+    
+    createCorner(button, 5)
+    createStroke(button, 1, Color3.fromRGB(20, 20, 25))
+    
+    button.MouseEnter:Connect(function()
+        button.BackgroundColor3 = Color3.fromRGB(
+            math.floor(theme.Accent.R * 255 + 20),
+            math.floor(theme.Accent.G * 255 + 20),
+            math.floor(theme.Accent.B * 255 + 20)
+        )
+    end)
+    
+    button.MouseLeave:Connect(function()
+        button.BackgroundColor3 = theme.Accent
+    end)
+    
+    if callback then
+        button.MouseButton1Click:Connect(callback)
+    end
+    
+    button.Parent = parent
+    return button
+end
 
-local modeBtn = Instance.new("TextButton", pageMain)
-modeBtn.Text = "Tốc độ: Chậm"
-modeBtn.Position = UDim2.new(0, 10, 0, 60)
-modeBtn.Size = UDim2.new(1, -20, 0, 30)
-modeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-modeBtn.TextColor3 = Color3.new(1,1,1)
-modeBtn.BorderSizePixel = 0
+-- Main window
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.new(0, 500, 0, 400)
+main.Position = UDim2.new(0.5, -250, 0.5, -200)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.BackgroundColor3 = theme.Background
+createCorner(main, 10)
+createStroke(main, 2, Color3.fromRGB(60, 60, 65))
 
-local customBox = Instance.new("TextBox", pageMain)
-customBox.PlaceholderText = "Delay (giây)"
-customBox.Text = ""
-customBox.Position = UDim2.new(0, 10, 0, 100)
-customBox.Size = UDim2.new(1, -20, 0, 30)
-customBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-customBox.TextColor3 = Color3.new(1,1,1)
-customBox.BorderSizePixel = 0
+-- Title bar
+local titleBar = Instance.new("Frame", main)
+titleBar.Size = UDim2.new(1, 0, 0, 35)
+titleBar.BackgroundColor3 = theme.Secondary
+createCorner(titleBar, 10, 10, 0, 0)
 
--- Checkpoint Tab
-local btnOther = createTabButton("Checkpoint")
-local pageOther = createPage()
-pages.Other = pageOther
+local title = Instance.new("TextLabel", titleBar)
+title.Size = UDim2.new(1, -40, 1, 0)
+title.Text = "PongbHub"
+title.TextColor3 = theme.Text
+title.TextSize = 18
+title.Font = Enum.Font.GothamBold
+title.BackgroundTransparency = 1
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Padding.Left = UDim.new(0, 10)
 
-local saveBtn = Instance.new("TextButton", pageOther)
-saveBtn.Text = "Lưu Checkpoint"
-saveBtn.Position = UDim2.new(0, 10, 0, 10)
-saveBtn.Size = UDim2.new(1, -20, 0, 30)
-saveBtn.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
-saveBtn.TextColor3 = Color3.new(1,1,1)
-saveBtn.BorderSizePixel = 0
-
-local tpBtn = Instance.new("TextButton", pageOther)
-tpBtn.Text = "Dịch chuyển"
-tpBtn.Position = UDim2.new(0, 10, 0, 50)
-tpBtn.Size = UDim2.new(1, -20, 0, 30)
-tpBtn.BackgroundColor3 = Color3.fromRGB(200, 120, 60)
-tpBtn.TextColor3 = Color3.new(1,1,1)
-tpBtn.BorderSizePixel = 0
-
--- Delete Tab
-local btnDelete = createTabButton("Xóa GUI")
-local pageDelete = createPage()
-pages.Delete = pageDelete
-
-local delBtn = Instance.new("TextButton", pageDelete)
-delBtn.Text = "Xóa giao diện"
-delBtn.Position = UDim2.new(0, 10, 0, 40)
-delBtn.Size = UDim2.new(1, -20, 0, 35)
-delBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-delBtn.TextColor3 = Color3.new(1,1,1)
-delBtn.BorderSizePixel = 0
-
--- Tab switching logic
-btnMain.MouseButton1Click:Connect(function()
-	for _, p in pairs(pages) do p.Visible = false end
-	pageMain.Visible = true
-end)
-btnOther.MouseButton1Click:Connect(function()
-	for _, p in pairs(pages) do p.Visible = false end
-	pageOther.Visible = true
-end)
-btnDelete.MouseButton1Click:Connect(function()
-	for _, p in pairs(pages) do p.Visible = false end
-	pageDelete.Visible = true
-end)
-
-pageMain.Visible = true
-
--- Toggle tốc độ
-modeBtn.MouseButton1Click:Connect(function()
-	if speedMode == "Chậm" then
-		speedMode = "Nhanh"
-		delayTime = 0.2
-	elseif speedMode == "Nhanh" then
-		speedMode = "Tùy chỉnh"
-		delayTime = tonumber(customBox.Text) or 1
-	else
-		speedMode = "Chậm"
-		delayTime = 1
-	end
-	modeBtn.Text = "Tốc độ: " .. speedMode
+-- Minimize button
+local toggleBtn = createButton(titleBar, "-", UDim2.new(0, 30, 0, 30), UDim2.new(1, -35, 0.5, -15), function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        content.Visible = false
+        tabList.Visible = false
+        main.Size = UDim2.new(0, 500, 0, 35)
+        toggleBtn.Text = "+"
+    else
+        content.Visible = true
+        tabList.Visible = true
+        main.Size = UDim2.new(0, 500, 0, 400)
+        toggleBtn.Text = "-"
+    end
 end)
 
--- Toggle bật/tắt auto
-toggleBtn.MouseButton1Click:Connect(function()
-	collectingEnabled = not collectingEnabled
-	toggleBtn.Text = collectingEnabled and "Đã bật (Giữ E)" or "Bật Auto (Giữ E)"
+-- Tab list
+local tabList = Instance.new("Frame", main)
+tabList.Size = UDim2.new(0, 120, 1, -35)
+tabList.Position = UDim2.new(0, 0, 0, 35)
+tabList.BackgroundColor3 = theme.Secondary
+
+-- Content area
+local content = Instance.new("Frame", main)
+content.Size = UDim2.new(1, -120, 1, -35)
+content.Position = UDim2.new(0, 120, 0, 35)
+content.BackgroundColor3 = theme.Background
+content.BackgroundTransparency = 0.05
+
+-- Tab system
+local tabs = {}
+local function createTab(name)
+    local tab = {}
+    
+    -- Tab button
+    tab.button = createButton(tabList, name, UDim2.new(1, -10, 0, 40), UDim2.new(0, 5, 0, 5 + (#tabs * 45)), function()
+        for _, t in pairs(tabs) do
+            t.frame.Visible = false
+            t.button.BackgroundColor3 = theme.Secondary
+        end
+        tab.frame.Visible = true
+        tab.button.BackgroundColor3 = theme.Accent
+    end)
+    
+    tab.button.BackgroundColor3 = theme.Secondary
+    
+    -- Tab content frame
+    tab.frame = Instance.new("ScrollingFrame", content)
+    tab.frame.Size = UDim2.new(1, 0, 1, 0)
+    tab.frame.BackgroundTransparency = 1
+    tab.frame.Visible = false
+    tab.frame.ScrollBarThickness = 5
+    tab.frame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    tab.frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    
+    table.insert(tabs, tab)
+    return tab
+end
+
+-- Create tabs
+local stealTab = createTab("Steal")
+local miscTab = createTab("Misc")
+local settingTab = createTab("Settings")
+
+-- Steal Tab Content
+local function addCheckpoint()
+    lastCheckpoint = hrp.CFrame
+    local notification = Instance.new("TextLabel", stealTab.frame)
+    notification.Text = "✓ Checkpoint saved!"
+    notification.TextColor3 = theme.Success
+    notification.Size = UDim2.new(1, -20, 0, 25)
+    notification.Position = UDim2.new(0, 10, 0, 10)
+    notification.BackgroundTransparency = 1
+    notification.Font = Enum.Font.GothamSemibold
+    
+    delay(3, function()
+        notification:Destroy()
+    end)
+end
+
+createButton(stealTab.frame, "Save Checkpoint", UDim2.new(1, -20, 0, 35), UDim2.new(0, 10, 0, 10), addCheckpoint)
+
+createButton(stealTab.frame, "Teleport to Checkpoint", UDim2.new(1, -20, 0, 35), UDim2.new(0, 10, 0, 55), function()
+    if lastCheckpoint then
+        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+        hrp.CFrame = lastCheckpoint
+    else
+        local warning = createLabel(stealTab.frame, "No checkpoint saved!", UDim2.new(1, -20, 0, 25), UDim2.new(0, 10, 0, 95))
+        warning.TextColor3 = theme.Warning
+        
+        delay(3, function()
+            warning:Destroy()
+        end)
+    end
 end)
 
--- Giữ phím E
-UIS.InputBegan:Connect(function(input)
-	if input.KeyCode == Enum.KeyCode.E and collectingEnabled then
-		collecting = true
-	end
-end)
-UIS.InputEnded:Connect(function(input)
-	if input.KeyCode == Enum.KeyCode.E then
-		collecting = false
-	end
-end)
-
--- Auto collect loop (tương thích Grow A Garden)
-task.spawn(function()
-	while true do
-		if collecting then
-			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-			if root then
-				for _, obj in pairs(workspace:GetDescendants()) do
-					if obj:IsA("ProximityPrompt") and (obj.Parent.Position - root.Position).Magnitude <= 10 then
-						fireproximityprompt(obj)
-					end
-				end
-			end
-		end
-		if speedMode == "Tùy chỉnh" then
-			delayTime = tonumber(customBox.Text) or 1
-		end
-		task.wait(delayTime)
-	end
+local autoStealBtn = createButton(stealTab.frame, "Auto Steal (Speed: 32)", UDim2.new(1, -20, 0, 35), UDim2.new(0, 10, 0, 100), function()
+    autoStealActive = not autoStealActive
+    
+    if autoStealActive then
+        autoStealBtn.Text = "Stop Auto Steal"
+        humanoid.WalkSpeed = 32
+        
+        if autoStealConnection then
+            autoStealConnection:Disconnect()
+        end
+        
+        autoStealConnection = game:GetService("RunService").Heartbeat:Connect(function()
+            local spawn = workspace:FindFirstChild("SpawnLocation")
+            if spawn and humanoid.Health > 0 then
+                local tween = TweenService:Create(hrp, TweenInfo.new(5), {
+                    CFrame = spawn.CFrame + Vector3.new(0, 3, 0)
+                })
+                tween:Play()
+            end
+        end)
+    else
+        autoStealBtn.Text = "Auto Steal (Speed: 32)"
+        humanoid.WalkSpeed = 16
+        if autoStealConnection then
+            autoStealConnection:Disconnect()
+            autoStealConnection = nil
+        end
+    end
 end)
 
--- Checkpoint
-saveBtn.MouseButton1Click:Connect(function()
-	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-	if root then
-		checkpoint = root.Position
-		saveBtn.Text = "Đã lưu!"
-		task.delay(1, function()
-			saveBtn.Text = "Lưu Checkpoint"
-		end)
-	end
+createLabel(stealTab.frame, "⚠️ Only use when you have brainrot", UDim2.new(1, -20, 0, 40), UDim2.new(0, 10, 0, 145)).TextColor3 = theme.Warning
+
+-- Misc Tab Content
+createButton(miscTab.frame, "Rejoin Server", UDim2.new(1, -20, 0, 35), UDim2.new(0, 10, 0, 10), function()
+    TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId)
 end)
 
-tpBtn.MouseButton1Click:Connect(function()
-	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-	if root and checkpoint then
-		root.CFrame = CFrame.new(checkpoint)
-	end
+createButton(miscTab.frame, "Server Hop", UDim2.new(1, -20, 0, 35), UDim2.new(0, 10, 0, 55), function()
+    -- This should be replaced with actual server hopping logic
+    local fakeId = "00000000000000000000000000000000"
+    TeleportService:TeleportToPlaceInstance(109983668079237, fakeId)
 end)
 
--- Xóa GUI
-delBtn.MouseButton1Click:Connect(function()
-	gui:Destroy()
+local jobInput = Instance.new("TextBox", miscTab.frame)
+jobInput.PlaceholderText = "Enter Job ID"
+jobInput.Size = UDim2.new(1, -20, 0, 35)
+jobInput.Position = UDim2.new(0, 10, 0, 100)
+jobInput.BackgroundColor3 = theme.Secondary
+jobInput.TextColor3 = theme.Text
+jobInput.Font = Enum.Font.Gotham
+createCorner(jobInput, 5)
+createStroke(jobInput, 1, Color3.fromRGB(60, 60, 65))
+
+createButton(miscTab.frame, "Join Job ID", UDim2.new(1, -20, 0, 35), UDim2.new(0, 10, 0, 145), function()
+    local id = jobInput.Text
+    if id and id ~= "" then
+        TeleportService:TeleportToPlaceInstance(109983668079237, id)
+    end
+end)
+
+createButton(miscTab.frame, "Destroy GUI", UDim2.new(1, -20, 0, 35), UDim2.new(0, 10, 0, 190), function()
+    gui:Destroy()
+end)
+
+-- Settings Tab Content
+createLabel(settingTab.frame, "Language:", UDim2.new(0.5, -10, 0, 25), UDim2.new(0, 10, 0, 10))
+
+local langBtn = createButton(settingTab.frame, "Tiếng Việt / English", UDim2.new(1, -20, 0, 35), UDim2.new(0, 10, 0, 40), function()
+    lang = (lang == "vi") and "en" or "vi"
+    langBtn.Text = (lang == "vi") and "Tiếng Việt / English" or "English / Tiếng Việt"
+    
+    -- Here you would add logic to change all text in the GUI
+    -- This is just a placeholder for the functionality
+end)
+
+-- Keybind system
+createLabel(settingTab.frame, "Keybinds:", UDim2.new(0.5, -10, 0, 25), UDim2.new(0, 10, 0, 90))
+
+local keybinds = {
+    {name = "Save Checkpoint", key = Enum.KeyCode.F1, func = addCheckpoint},
+    {name = "Toggle GUI", key = Enum.KeyCode.RightShift, func = function()
+        gui.Enabled = not gui.Enabled
+    end}
+}
+
+local keybindFrame = Instance.new("Frame", settingTab.frame)
+keybindFrame.Size = UDim2.new(1, -20, 0, 100)
+keybindFrame.Position = UDim2.new(0, 10, 0, 120)
+keybindFrame.BackgroundColor3 = theme.Secondary
+createCorner(keybindFrame, 5)
+
+local keybindLayout = Instance.new("UIListLayout", keybindFrame)
+keybindLayout.Padding = UDim.new(0, 5)
+
+for _, bind in ipairs(keybinds) do
+    local bindFrame = Instance.new("Frame", keybindFrame)
+    bindFrame.Size = UDim2.new(1, -10, 0, 30)
+    bindFrame.BackgroundTransparency = 1
+    
+    createLabel(bindFrame, bind.name, UDim2.new(0.6, 0, 1, 0), UDim2.new(0, 0, 0, 0))
+    createLabel(bindFrame, bind.key.Name, UDim2.new(0.4, 0, 1, 0), UDim2.new(0.6, 0, 0, 0)).TextXAlignment = Enum.TextXAlignment.Right
+    
+    -- Set up the actual keybind
+    game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+        if not gameProcessed and input.KeyCode == bind.key then
+            bind.func()
+        end
+    end)
+end
+
+-- Initialize first tab
+tabs[1].button.BackgroundColor3 = theme.Accent
+tabs[1].frame.Visible = true
+
+-- Make window draggable
+local dragging
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = main.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+titleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
 end)
