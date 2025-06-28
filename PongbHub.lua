@@ -1,14 +1,16 @@
 --PongbHub--
---Script by Pongb team--
+--Enhanced Script by Pongb team--
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
-local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-gui.Name = "UI_Main"
+local gui = Instance.new("ScreenGui", CoreGui) -- Changed to CoreGui for better hiding
+gui.Name = "UI_Main_"..HttpService:GenerateGUID(false)
 gui.ResetOnSpawn = false
 
 -- === Language Settings ===
@@ -38,7 +40,12 @@ local texts = {
         ShortcutList = "F1: Ẩn/hiện GUI\nF2: Phóng to/thu nhỏ\nF4: Ẩn khẩn cấp\nShift phải: Ẩn/hiện GUI",
         CurrentSpeed = "Tốc độ hiện tại: ",
         SetSpeed = "Áp dụng tốc độ",
-        SpeedUpdated = "Đã đặt tốc độ thành: "
+        SpeedUpdated = "Đã đặt tốc độ thành: ",
+        ActiveFeature = "TÍNH NĂNG ĐANG BẬT: ",
+        MultiCP = "Lưu CP đa điểm",
+        SelectCP = "Chọn CP",
+        NextCP = "CP tiếp theo",
+        PrevCP = "CP trước đó"
     },
     en = {
         Title = "PongbHub",
@@ -64,23 +71,110 @@ local texts = {
         ShortcutList = "F1: Toggle GUI\nF2: Zoom GUI\nF4: Emergency hide\nRight Shift: Toggle GUI",
         CurrentSpeed = "Current speed: ",
         SetSpeed = "Apply Speed",
-        SpeedUpdated = "Speed set to: "
+        SpeedUpdated = "Speed set to: ",
+        ActiveFeature = "ACTIVE FEATURE: ",
+        MultiCP = "Save Multi CP",
+        SelectCP = "Select CP",
+        NextCP = "Next CP",
+        PrevCP = "Previous CP"
     }
 }
 
 -- === Global Variables ===
-local cp
+local cp = {}
+local currentCPIndex = 1
 local autoStealActive = false
 local noClipActive = false
 local walkSpeed = 16
 local baseWalkSpeed = 16
 local isGUIMaximized = false
+local flySpeed = 35
+local activeFeatures = {}
+local gameId = 109983668079237 -- Target game ID for server hop
 
 -- GUI Size Settings
 local originalGUISize = UDim2.new(0, 550, 0, 380)
 local originalGUIPosition = UDim2.new(0.5, -275, 0.5, -190)
 local maximizedGUISize = UDim2.new(0, 700, 0, 500)
 local maximizedGUIPosition = UDim2.new(0.5, -350, 0.5, -250)
+
+-- === Anti-Cheat Protection ===
+local function getRandomName()
+    local letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    local name = ""
+    for i = 1, 10 do
+        name = name .. string.sub(letters, math.random(1, #letters), math.random(1, #letters))
+    end
+    return name
+end
+
+local AntiBan = {
+    Active = true,
+    LastCheck = 0,
+    SafeFunctions = {},
+    
+    SafeCheck = function(self)
+        if tick() - self.LastCheck < 30 then return true end
+        self.LastCheck = tick()
+        
+        -- Randomize function names
+        for k, v in pairs(self.SafeFunctions) do
+            self.SafeFunctions[getRandomName()] = v
+            self.SafeFunctions[k] = nil
+        end
+        
+        -- Check for anti-cheat services
+        local unsafe = {"AntiCheat", "AC", "Badger", "VAC", "Kick", "Ban"}
+        for _, name in pairs(unsafe) do
+            if game:GetService(name) then
+                return false
+            end
+        end
+        
+        -- Check for known anti-cheat scripts
+        for _, v in pairs(getnilinstances()) do
+            if v:IsA("LocalScript") and (v.Name:find("Anti") or v.Name:find("AC")) then
+                return false
+            end
+        end
+        
+        return true
+    end,
+    
+    HandleKick = function(self, code)
+        if code and (code:find("BAC%-10261") or code:find("Kick") or code:find("Ban")) then
+            task.wait(math.random(200, 400)) -- Random delay
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId)
+        end
+    end,
+    
+    SafeCall = function(self, func, ...)
+        if not self.Active then return end
+        local success, result = pcall(func, ...)
+        if not success then
+            warn("AntiBan intercepted error: "..result)
+        end
+        return result
+    end
+}
+
+-- Initialize safe functions
+AntiBan.SafeFunctions = {
+    showNotification = function(title, text)
+        game.StarterGui:SetCore("SendNotification", {
+            Title = title,
+            Text = text,
+            Duration = 2,
+            Icon = "rbxassetid://6726575885"
+        })
+    end,
+    
+    teleportTo = function(cframe)
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            player.Character.HumanoidRootPart.CFrame = cframe
+        end
+    end
+}
 
 -- === Main GUI ===
 local main = Instance.new("Frame", gui)
@@ -116,6 +210,16 @@ title.TextSize = 18
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Position = UDim2.new(0, 12, 0, 0)
 
+local activeFeatureLabel = Instance.new("TextLabel", titleBar)
+activeFeatureLabel.Size = UDim2.new(0, 200, 1, 0)
+activeFeatureLabel.Position = UDim2.new(0.5, -100, 0, 0)
+activeFeatureLabel.BackgroundTransparency = 1
+activeFeatureLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+activeFeatureLabel.Text = ""
+activeFeatureLabel.Font = Enum.Font.GothamBold
+activeFeatureLabel.TextSize = 14
+activeFeatureLabel.Visible = false
+
 local zoomBtn = Instance.new("TextButton", titleBar)
 zoomBtn.Size = UDim2.new(0, 32, 0, 32)
 zoomBtn.Position = UDim2.new(1, -32, 0, 0)
@@ -140,13 +244,17 @@ content.BackgroundTransparency = 1
 content.ClipsDescendants = true
 
 -- === Utility Functions ===
-local function showNotification(title, text)
-    game.StarterGui:SetCore("SendNotification", {
-        Title = title,
-        Text = text,
-        Duration = 2,
-        Icon = "rbxassetid://6726575885"
-    })
+local function updateActiveFeatures()
+    local features = {}
+    if autoStealActive then table.insert(features, texts[lang].AutoSteal) end
+    if noClipActive then table.insert(features, texts[lang].NoClip) end
+    
+    if #features > 0 then
+        activeFeatureLabel.Text = texts[lang].ActiveFeature..table.concat(features, ", ")
+        activeFeatureLabel.Visible = true
+    else
+        activeFeatureLabel.Visible = false
+    end
 end
 
 local function createTabButton(name, posY)
@@ -206,7 +314,9 @@ local function addButton(tab, key, posY, callback)
         btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     end)
     
-    btn.MouseButton1Click:Connect(callback)
+    btn.MouseButton1Click:Connect(function()
+        AntiBan:SafeCall(callback)
+    end)
     return btn
 end
 
@@ -221,7 +331,8 @@ local function addToggleButton(tab, key, posY, callback)
         else
             btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
         end
-        callback(active)
+        AntiBan:SafeCall(callback, active)
+        updateActiveFeatures()
     end)
     
     return btn
@@ -254,100 +365,182 @@ end
 
 for name, btn in pairs(tabButtons) do
     btn.MouseButton1Click:Connect(function()
-        fadeTo(name)
+        AntiBan:SafeCall(fadeTo, name)
     end)
 end
 
--- === STEAL TAB ===
--- NoClip Function
-local function noclipLoop()
+-- === Enhanced NoClip ===
+local function improvedNoClip()
     while noClipActive and player.Character do
+        if player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid:ChangeState(11) -- Freeze state to prevent detection
+        end
+        
         for _, part in pairs(player.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
+            if part:IsA("BasePart") and part.CanCollide then
                 part.CanCollide = false
+                part.Velocity = Vector3.new(0, 0, 0)
+                part.RotVelocity = Vector3.new(0, 0, 0)
             end
         end
         RunService.Stepped:Wait()
     end
 end
 
-addButton(tabs.Steal, "SaveCP", 20, function()
+-- === Flying Function for Auto Steal ===
+local function flyToPosition(targetCFrame)
+    if not player.Character then return end
+    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not hrp then return end
+    
+    -- Enable flying
+    humanoid.PlatformStand = true
+    
+    local bodyVelocity = Instance.new("BodyVelocity", hrp)
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000)
+    
+    local startTime = tick()
+    local distance = (hrp.Position - targetCFrame.Position).Magnitude
+    
+    while autoStealActive and (tick() - startTime < distance / flySpeed * 1.5) do
+        if not player.Character or not hrp or not bodyVelocity then break end
+        
+        local direction = (targetCFrame.Position - hrp.Position).Unit
+        bodyVelocity.Velocity = direction * flySpeed
+        
+        -- Smooth height adjustment (fly slightly above ground)
+        local ray = Ray.new(hrp.Position, Vector3.new(0, -10, 0))
+        local hit = workspace:FindPartOnRay(ray, player.Character)
+        
+        if hit then
+            bodyVelocity.Velocity = Vector3.new(bodyVelocity.Velocity.X, 5, bodyVelocity.Velocity.Z)
+        else
+            bodyVelocity.Velocity = Vector3.new(bodyVelocity.Velocity.X, 0, bodyVelocity.Velocity.Z)
+        end
+        
+        RunService.Heartbeat:Wait()
+    end
+    
+    -- Cleanup
+    if bodyVelocity then bodyVelocity:Destroy() end
+    if humanoid then humanoid.PlatformStand = false end
+end
+
+-- === Multi Checkpoint System ===
+local function saveCurrentCP()
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if hrp then 
-        cp = hrp.CFrame
-        showNotification(texts[lang].Title, texts[lang].CPSaved)
+        table.insert(cp, hrp.CFrame)
+        AntiBan.SafeFunctions.showNotification(texts[lang].Title, texts[lang].CPSaved.." #"..#cp)
     end
+end
+
+local function teleportToCP(index)
+    if cp[index] then
+        currentCPIndex = index
+        AntiBan.SafeFunctions.teleportTo(cp[index])
+        AntiBan.SafeFunctions.showNotification(texts[lang].Title, texts[lang].CPTeled.." #"..index)
+    end
+end
+
+-- === STEAL TAB ===
+addButton(tabs.Steal, "SaveCP", 20, function()
+    saveCurrentCP()
 end)
 
 addButton(tabs.Steal, "TeleCP", 60, function()
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if cp and hrp then 
-        hrp.CFrame = cp
-        showNotification(texts[lang].Title, texts[lang].CPTeled)
+    if #cp > 0 then
+        teleportToCP(currentCPIndex)
     end
 end)
 
-addToggleButton(tabs.Steal, "AutoSteal", 100, function(active)
+addButton(tabs.Steal, "MultiCP", 100, function()
+    saveCurrentCP()
+end)
+
+addButton(tabs.Steal, "NextCP", 140, function()
+    if #cp > 0 then
+        currentCPIndex = (currentCPIndex % #cp) + 1
+        teleportToCP(currentCPIndex)
+    end
+end)
+
+addButton(tabs.Steal, "PrevCP", 180, function()
+    if #cp > 0 then
+        currentCPIndex = (currentCPIndex - 2) % #cp + 1
+        teleportToCP(currentCPIndex)
+    end
+end)
+
+addToggleButton(tabs.Steal, "AutoSteal", 220, function(active)
     autoStealActive = active
     if active then
         spawn(function()
-            local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
-            if humanoid then
-                baseWalkSpeed = humanoid.WalkSpeed
-                humanoid.WalkSpeed = 32
-            end
-            
-            while autoStealActive and player.Character do
-                local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-                humanoid = player.Character:FindFirstChild("Humanoid")
+            while autoStealActive and player.Character and #cp > 0 do
+                flyToPosition(cp[currentCPIndex])
                 
-                if cp and hrp and humanoid then
-                    humanoid:MoveTo(cp.Position)
-                    
-                    local reached = false
-                    local connection
-                    connection = humanoid.MoveToFinished:Connect(function(success)
-                        if success then
-                            connection:Disconnect()
-                            reached = true
-                        end
-                    end)
-                    
-                    local startTime = tick()
-                    while not reached and (tick() - startTime < 10) and autoStealActive do
-                        task.wait()
-                    end
-                    
-                    if connection then connection:Disconnect() end
-                end
+                -- Move to next CP automatically
+                currentCPIndex = (currentCPIndex % #cp) + 1
+                
+                -- Small delay before next move
                 task.wait(0.5)
             end
-            
-            if player.Character and player.Character:FindFirstChild("Humanoid") then
-                player.Character.Humanoid.WalkSpeed = baseWalkSpeed
-            end
+            autoStealActive = false
         end)
-    else
-        if player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.Humanoid.WalkSpeed = baseWalkSpeed
-        end
     end
 end)
 
-addToggleButton(tabs.Steal, "NoClip", 140, function(active)
+addToggleButton(tabs.Steal, "NoClip", 260, function(active)
     noClipActive = active
     if active then
-        spawn(noclipLoop)
+        spawn(improvedNoClip)
     end
 end)
 
 -- === MISC TAB ===
+local function safeTeleport(placeId, jobId)
+    if not AntiBan:SafeCheck() then
+        gui:Destroy()
+        return
+    end
+    
+    if jobId then
+        TeleportService:TeleportToPlaceInstance(placeId, jobId)
+    else
+        TeleportService:Teleport(placeId)
+    end
+end
+
 addButton(tabs.Misc, "Rejoin", 20, function()
-    TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId)
+    safeTeleport(game.PlaceId, game.JobId)
 end)
 
 addButton(tabs.Misc, "Hop", 60, function()
-    TeleportService:TeleportToPlaceInstance(game.PlaceId)
+    -- Get servers for our target game
+    local servers = {}
+    local success, result = pcall(function()
+        return game:GetService("HttpService"):JSONDecode(game:HttpGet(
+            "https://games.roblox.com/v1/games/"..gameId.."/servers/Public?limit=100"
+        ))
+    end)
+    
+    if success and result and result.data then
+        for _, server in pairs(result.data) do
+            if server.id ~= game.JobId and server.playing < server.maxPlayers then
+                table.insert(servers, server.id)
+            end
+        end
+        
+        if #servers > 0 then
+            safeTeleport(gameId, servers[math.random(1, #servers)])
+        else
+            safeTeleport(gameId)
+        end
+    else
+        safeTeleport(gameId)
+    end
 end)
 
 local jobBox = Instance.new("TextBox", tabs.Misc)
@@ -366,7 +559,7 @@ boxCorner.CornerRadius = UDim.new(0, 4)
 
 addButton(tabs.Misc, "Join", 140, function()
     if jobBox.Text ~= "" then
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, jobBox.Text)
+        safeTeleport(game.PlaceId, jobBox.Text)
     end
 end)
 
@@ -411,7 +604,7 @@ local function updateWalkSpeed()
                 player.Character.Humanoid.WalkSpeed = walkSpeed
             end
         end
-        showNotification(texts[lang].Title, texts[lang].SpeedUpdated..walkSpeed)
+        AntiBan.SafeFunctions.showNotification(texts[lang].Title, texts[lang].SpeedUpdated..walkSpeed)
     else
         speedSlider.Text = tostring(walkSpeed)
     end
@@ -419,7 +612,7 @@ end
 
 speedSlider.FocusLost:Connect(function(enterPressed)
     if enterPressed then
-        updateWalkSpeed()
+        AntiBan:SafeCall(updateWalkSpeed)
     end
 end)
 
@@ -442,6 +635,7 @@ addButton(tabs.Setting, "LangSwitch", 140, function()
             end
         end
     end
+    updateActiveFeatures()
 end)
 
 -- Shortcuts Info
@@ -468,15 +662,14 @@ shortcutsText.TextYAlignment = Enum.TextYAlignment.Top
 
 -- Config Buttons
 addButton(tabs.Setting, "SaveConfig", 340, function()
-    -- Save configuration here
-    showNotification(texts[lang].Title, texts[lang].ConfigSaved)
+    AntiBan.SafeFunctions.showNotification(texts[lang].Title, texts[lang].ConfigSaved)
 end)
 
 addButton(tabs.Setting, "ResetConfig", 380, function()
     walkSpeed = 16
     speedSlider.Text = "16"
     updateWalkSpeed()
-    showNotification(texts[lang].Title, texts[lang].ConfigReset)
+    AntiBan.SafeFunctions.showNotification(texts[lang].Title, texts[lang].ConfigReset)
 end)
 
 -- === GUI Zoom Function ===
@@ -492,6 +685,22 @@ zoomBtn.MouseButton1Click:Connect(function()
         zoomBtn.Text = texts[lang].ZoomGUI
     end
 end)
+
+-- === Mobile/PC Responsive Adjustments ===
+local function updateGUIPosition()
+    if UserInputService.TouchEnabled then -- Mobile
+        main.Position = UDim2.new(0.5, -275, 0.1, 0)
+    else -- PC
+        if isGUIMaximized then
+            main.Position = maximizedGUIPosition
+        else
+            main.Position = originalGUIPosition
+        end
+    end
+end
+
+UserInputService.LastInputTypeChanged:Connect(updateGUIPosition)
+updateGUIPosition()
 
 -- === Keyboard Shortcuts ===
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -522,45 +731,21 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- === Anti-Cheat Protection ===
-local AntiBan = {
-    Active = true,
-    LastCheck = 0,
-    
-    SafeCheck = function(self)
-        if tick() - self.LastCheck < 30 then return true end
-        self.LastCheck = tick()
-        
-        local unsafe = {"AntiCheat", "AC", "Badger", "VAC"}
-        for _, name in pairs(unsafe) do
-            if game:GetService(name) then
-                return false
-            end
-        end
-        return true
-    end,
-    
-    HandleKick = function(self, code)
-        if code and code:find("BAC%-10261") then
-            task.wait(300)
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId)
-        end
-    end
-}
-
-game:GetService("Players").PlayerRemoving:Connect(function(p)
-    if p == player and AntiBan.Active then
-        AntiBan:HandleKick(p.KickMessage)
-    end
-end)
-
+-- === Anti-Cheat Protection Loop ===
 spawn(function()
-    while AntiBan.Active and task.wait(10) do
+    while AntiBan.Active and task.wait(math.random(10, 20)) do -- Random check interval
         if not AntiBan:SafeCheck() then
             gui:Destroy()
             AntiBan.Active = false
             break
         end
+    end
+end)
+
+-- Player removal handler
+game:GetService("Players").PlayerRemoving:Connect(function(p)
+    if p == player and AntiBan.Active then
+        AntiBan:HandleKick(p.KickMessage)
     end
 end)
 
