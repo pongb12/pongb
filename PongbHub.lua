@@ -150,7 +150,7 @@ local function createCPButton(index, cframe)
     btn.Font = Enum.Font.Gotham
     btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
     btn.TextColor3 = Color3.new(1, 1, 1)
-    
+
     btn.MouseButton1Click:Connect(function()
         currentCPIndex = index
         player.Character:FindFirstChild("HumanoidRootPart").CFrame = cframe
@@ -161,7 +161,7 @@ local function createCPButton(index, cframe)
             Duration = 2
         })
     end)
-    
+
     return btn
 end
 
@@ -205,37 +205,37 @@ local function flyToPosition(targetCFrame)
     local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
     local hrp = player.Character:FindFirstChild("HumanoidRootPart")
     if not humanoid or not hrp then return end
-    
+
     humanoid.PlatformStand = true
     local bodyVelocity = Instance.new("BodyVelocity", hrp)
     bodyVelocity.Velocity = Vector3.new(0, 0, 0)
     bodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000)
-    
+
     local startTime = tick()
     local distance = (hrp.Position - targetCFrame.Position).Magnitude
-    
+
     while autoStealActive and (tick() - startTime < distance / flySpeed * 2.5) do
         if not player.Character or not hrp or not bodyVelocity then break end
-        
+
         local direction = (targetCFrame.Position - hrp.Position).Unit
         bodyVelocity.Velocity = direction * flySpeed
-        
+
         -- Lower flying height adjustment
         local ray = Ray.new(hrp.Position, Vector3.new(0, -0.5, 0))
         local hit = workspace:FindPartOnRay(ray, player.Character)
-        
+
         if hit then
             bodyVelocity.Velocity = Vector3.new(bodyVelocity.Velocity.X, flyHeight, bodyVelocity.Velocity.Z)
         else
             bodyVelocity.Velocity = Vector3.new(bodyVelocity.Velocity.X, 0, bodyVelocity.Velocity.Z)
         end
-        
+
         RunService.Heartbeat:Wait()
     end
-    
+
     if bodyVelocity then bodyVelocity:Destroy() end
     if humanoid then humanoid.PlatformStand = false end
-    
+
     -- Auto-disable after reaching target
     if autoStealActive then
         autoStealActive = false
@@ -269,10 +269,10 @@ local function createButton(name, posY, callback, isToggle)
     btn.Font = Enum.Font.Gotham
     btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     btn.TextColor3 = Color3.new(1, 1, 1)
-    
+
     local btnCorner = Instance.new("UICorner", btn)
     btnCorner.CornerRadius = UDim.new(0, 4)
-    
+
     if isToggle then
         local active = false
         btn.MouseButton1Click:Connect(function()
@@ -283,7 +283,7 @@ local function createButton(name, posY, callback, isToggle)
     else
         btn.MouseButton1Click:Connect(callback)
     end
-    
+
     return btn
 end
 
@@ -373,7 +373,7 @@ main.InputBegan:Connect(function(input)
         dragging = true
         dragStart = input.Position
         startPos = main.Position
-        
+
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
