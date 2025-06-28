@@ -1,68 +1,35 @@
--- PongbHub Ultimate
--- Phiên bản bảo mật cao với đầy đủ tính năng chống phát hiện
+-- PongbHub Ultimate Fix
+-- Phiên bản ổn định cuối cùng
 
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
 
--- ======= HỆ THỐNG CHỐNG PHÁT HIỆN =======
-local secure = {
-    randomNames = {},
-    lastCheck = 0,
-    safeFunctions = {},
-    active = true
+-- ===== HỆ THỐNG BẢO MẬT =====
+local Security = {
+    Active = true,
+    LastCheck = 0,
+    RandomNames = {},
+    SafeFunctions = {}
 }
 
--- Tạo tên ngẫu nhiên cho các thành phần
-local function generateRandomName()
-    local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    local name = ""
-    for i = 1, 12 do
-        name = name .. string.sub(chars, math.random(1, #chars), 1)
-    end
-    return name
-end
-
--- Đặt tên ngẫu nhiên cho các thành phần chính
+-- Tạo tên ngẫu nhiên
 for i = 1, 5 do
-    secure.randomNames[i] = generateRandomName()
-end
-
--- Hàm gọi an toàn
-function secure.safeCall(func, ...)
-    if not secure.active then return nil end
-    local success, result = pcall(func, ...)
-    if not success then
-        warn(secure.randomNames[1] .. ": " .. result)
-        return nil
-    end
-    return result
+    Security.RandomNames[i] = HttpService:GenerateGUID(false)
 end
 
 -- Kiểm tra anti-cheat
-function secure.antiCheatCheck()
-    if tick() - secure.lastCheck < math.random(15, 30) then return true end
-    secure.lastCheck = tick()
-    
-    -- Thay đổi tên hàm ngẫu nhiên
-    secure.safeFunctions[generateRandomName()] = secure.safeCall
-    secure.safeFunctions[generateRandomName()] = secure.antiCheatCheck
+function Security:CheckSafety()
+    if tick() - self.LastCheck < 30 then return true end
+    self.LastCheck = tick()
     
     -- Kiểm tra dịch vụ anti-cheat
-    local unsafeServices = {"AntiCheat", "AC", "Badger", "VAC", "Kick", "Ban"}
-    for _, name in pairs(unsafeServices) do
+    local unsafe = {"AntiCheat", "AC", "Badger", "VAC"}
+    for _, name in pairs(unsafe) do
         if pcall(function() return game:GetService(name) end) then
-            return false
-        end
-    end
-    
-    -- Kiểm tra script anti-cheat
-    for _, v in pairs(getnilinstances()) do
-        if v:IsA("LocalScript") and (v.Name:find("Anti") or v.Name:find("AC")) then
             return false
         end
     end
@@ -70,137 +37,131 @@ function secure.antiCheatCheck()
     return true
 end
 
--- Xử lý khi bị kick
-function secure.handleKick(message)
-    if message and (message:find("BAC%-10261") or message:find("Kick") or message:find("Ban")) then
-        task.wait(math.random(200, 400)) -- Delay ngẫu nhiên
-        TeleportService:Teleport(game.PlaceId)
-    end
-end
-
--- ======= THIẾT LẬP GUI AN TOÀN =======
+-- ===== THIẾT LẬP GUI =====
 local gui = Instance.new("ScreenGui", CoreGui)
-gui.Name = secure.randomNames[2]
+gui.Name = Security.RandomNames[1]
 gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
 
--- ======= NO CLIP CẢI TIẾN =======
-local noClipActive = false
-
-local function enhancedNoClip()
-    while noClipActive and player.Character do
-        secure.safeCall(function()
-            -- Sử dụng trạng thái Freeze để tránh bị phát hiện
-            if player.Character:FindFirstChildOfClass("Humanoid") then
-                player.Character.Humanoid:ChangeState(11) -- Freeze state
-            end
-            
-            -- Reset velocity và tắt collision
-            for _, part in pairs(player.Character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                    part.Velocity = Vector3.new(0, 0, 0)
-                    part.RotVelocity = Vector3.new(0, 0, 0)
-                end
-            end
-        end)
-        RunService.Stepped:Wait()
-    end
-end
-
--- ======= SERVER HOP NÂNG CAO =======
-local function safeServerHop()
-    secure.safeCall(function()
-        local gameId = 109983668079237
-        local servers = {}
-        
-        -- Lấy danh sách server từ API
-        local success, result = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet(
-                "https://games.roblox.com/v1/games/"..gameId.."/servers/Public?limit=100"
-            ))
-        end)
-        
-        if success and result and result.data then
-            for _, server in pairs(result.data) do
-                if server.id ~= game.JobId and server.playing < server.maxPlayers then
-                    table.insert(servers, server.id)
-                end
-            end
-            
-            -- Chọn server ngẫu nhiên
-            if #servers > 0 then
-                TeleportService:TeleportToPlaceInstance(gameId, servers[math.random(1, #servers)])
-            else
-                TeleportService:Teleport(gameId)
-            end
-        else
-            TeleportService:Teleport(gameId)
-        end
-    end)
-end
-
--- ======= GIAO DIỆN THÔNG MINH =======
+-- Main Frame
 local main = Instance.new("Frame", gui)
 main.Size = UDim2.new(0, 400, 0, 300)
 main.AnchorPoint = Vector2.new(0.5, 0.5)
 main.Position = UDim2.new(0.5, 0, 0.5, 0)
-main.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-main.Name = secure.randomNames[3]
+main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+main.Active = true
 
--- Thanh tiêu đề thông minh
+-- Corner
+local corner = Instance.new("UICorner", main)
+corner.CornerRadius = UDim.new(0, 8)
+
+-- Title Bar
 local titleBar = Instance.new("Frame", main)
 titleBar.Size = UDim2.new(1, 0, 0, 30)
-titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-titleBar.Name = secure.randomNames[4]
+titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 
 local title = Instance.new("TextLabel", titleBar)
 title.Size = UDim2.new(1, -60, 1, 0)
-title.Text = "PongbHub Secure"
+title.Text = "PongbHub"
 title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.GothamBold
 
--- Hiển thị tính năng đang bật
-local activeFeatureLabel = Instance.new("TextLabel", titleBar)
-activeFeatureLabel.Size = UDim2.new(0, 150, 1, 0)
-activeFeatureLabel.Position = UDim2.new(1, -150, 0, 0)
-activeFeatureLabel.Text = ""
-activeFeatureLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-activeFeatureLabel.TextXAlignment = Enum.TextXAlignment.Right
+-- Status Label
+local statusLabel = Instance.new("TextLabel", titleBar)
+statusLabel.Size = UDim2.new(0, 150, 1, 0)
+statusLabel.Position = UDim2.new(1, -150, 0, 0)
+statusLabel.Text = ""
+statusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+statusLabel.TextXAlignment = Enum.TextXAlignment.Right
 
-local function updateActiveFeatures()
-    local features = {}
-    if noClipActive then table.insert(features, "NO CLIP") end
-    activeFeatureLabel.Text = table.concat(features, " | ")
+-- ===== TÍNH NĂNG CHÍNH =====
+-- NoClip
+local noClipActive = false
+
+local function safeNoClip()
+    while noClipActive and player.Character do
+        if player.Character:FindFirstChildOfClass("Humanoid") then
+            player.Character.Humanoid:ChangeState(11) -- Freeze state
+        end
+        
+        for _, part in pairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+                part.Velocity = Vector3.new(0, 0, 0)
+            end
+        end
+        RunService.Stepped:Wait()
+    end
 end
 
--- Nút NoClip cải tiến
-local noClipBtn = Instance.new("TextButton", main)
-noClipBtn.Size = UDim2.new(0.9, 0, 0, 30)
-noClipBtn.Position = UDim2.new(0.05, 0, 0.2, 0)
-noClipBtn.Text = "NO CLIP (F3)"
-noClipBtn.Name = secure.randomNames[5]
+-- Server Hop
+local function safeHop()
+    local gameId = 109983668079237
+    local servers = {}
+    
+    local success, result = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet(
+            "https://games.roblox.com/v1/games/"..gameId.."/servers/Public?limit=100"
+        ))
+    end)
+    
+    if success and result and result.data then
+        for _, server in pairs(result.data) do
+            if server.id ~= game.JobId then
+                table.insert(servers, server.id)
+            end
+        end
+        
+        if #servers > 0 then
+            TeleportService:TeleportToPlaceInstance(gameId, servers[math.random(1, #servers)])
+        else
+            TeleportService:Teleport(gameId)
+        end
+    else
+        TeleportService:Teleport(gameId)
+    end
+end
 
-noClipBtn.MouseButton1Click:Connect(function()
+-- ===== NÚT CHỨC NĂNG =====
+local function createButton(text, yPos, callback)
+    local btn = Instance.new("TextButton", main)
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Position = UDim2.new(0.05, 0, yPos, 0)
+    btn.Text = text
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    
+    btn.MouseButton1Click:Connect(function()
+        if Security.Active then
+            pcall(callback)
+        end
+    end)
+    
+    return btn
+end
+
+-- NoClip Button
+local noClipBtn = createButton("NO CLIP (F3)", 0.15, function()
     noClipActive = not noClipActive
     if noClipActive then
         noClipBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        secure.safeCall(enhancedNoClip)
+        statusLabel.Text = "NO CLIP ACTIVE"
+        spawn(safeNoClip)
     else
-        noClipBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        noClipBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        statusLabel.Text = ""
     end
-    updateActiveFeatures()
 end)
 
--- Nút Server Hop
-local hopBtn = Instance.new("TextButton", main)
-hopBtn.Size = UDim2.new(0.9, 0, 0, 30)
-hopBtn.Position = UDim2.new(0.05, 0, 0.4, 0)
-hopBtn.Text = "SERVER HOP (F4)"
+-- Server Hop Button
+local hopBtn = createButton("SERVER HOP (F4)", 0.3, safeHop)
 
-hopBtn.MouseButton1Click:Connect(function()
-    secure.safeCall(safeServerHop)
+-- Rejoin Button
+local rejoinBtn = createButton("REJOIN GAME", 0.45, function()
+    TeleportService:Teleport(game.PlaceId)
 end)
 
--- ======= XỬ LÝ SỰ KIỆN =======
+-- ===== XỬ LÝ SỰ KIỆN =====
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
@@ -208,36 +169,64 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         noClipActive = not noClipActive
         if noClipActive then
             noClipBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            secure.safeCall(enhancedNoClip)
+            statusLabel.Text = "NO CLIP ACTIVE"
+            spawn(safeNoClip)
         else
-            noClipBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            noClipBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            statusLabel.Text = ""
         end
-        updateActiveFeatures()
     elseif input.KeyCode == Enum.KeyCode.F4 then
-        secure.safeCall(safeServerHop)
+        safeHop()
     end
 end)
 
-Players.PlayerRemoving:Connect(function(p)
-    if p == player then
-        secure.safeCall(secure.handleKick, p.KickMessage)
+-- ===== KÉO THẢ GUI =====
+local dragging, dragInput, dragStart, startPos
+
+local function updateInput(input)
+    local delta = input.Position - dragStart
+    main.Position = UDim2.new(
+        startPos.X.Scale, 
+        startPos.X.Offset + delta.X,
+        startPos.Y.Scale, 
+        startPos.Y.Offset + delta.Y
+    )
+end
+
+main.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = main.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
     end
 end)
 
--- ======= TỰ ĐỘNG KIỂM TRA =======
+main.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        updateInput(input)
+    end
+end)
+
+-- ===== KIỂM TRA BẢO MẬT ĐỊNH KỲ =====
 spawn(function()
-    while secure.active do
-        secure.active = secure.safeCall(secure.antiCheatCheck)
-        if not secure.active then
+    while Security.Active do
+        Security.Active = Security:CheckSafety()
+        if not Security.Active then
             gui:Destroy()
             break
         end
-        wait(math.random(15, 30)) -- Kiểm tra ngẫu nhiên
+        wait(30)
     end
 end)
-
--- ======= ĐIỀU CHỈNH MOBILE =======
-if UserInputService.TouchEnabled then
-    main.Position = UDim2.new(0.5, 0, 0.2, 0)
-    main.Size = UDim2.new(0, 380, 0, 350)
-end
