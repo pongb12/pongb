@@ -67,7 +67,7 @@ local noClipActive = false
 local walkSpeed = 16
 local isGUIMaximized = false
 local flyHeight = 5 -- Lower flying height
-local flySpeed = 35
+local flySpeed = 45
 local activeFeatures = {}
 local gameId = 109983668079237
 
@@ -324,7 +324,7 @@ local speedSlider = Instance.new("TextBox", content)
 speedSlider.Size = UDim2.new(0.6, -5, 0, 30)
 speedSlider.Position = UDim2.new(0, 5, 0, 220)
 speedSlider.Text = tostring(walkSpeed)
-speedSlider.PlaceholderText = "16-100"
+speedSlider.PlaceholderText = "16-10000"
 speedSlider.TextSize = 14
 speedSlider.Font = Enum.Font.Gotham
 speedSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -332,7 +332,7 @@ speedSlider.TextColor3 = Color3.new(1, 1, 1)
 
 local speedBtn = createButton("SetSpeed", 220, function()
     local newSpeed = tonumber(speedSlider.Text)
-    if newSpeed and newSpeed >= 16 and newSpeed <= 100 then
+    if newSpeed and newSpeed >= 16 and newSpeed <= 10000 then
         walkSpeed = newSpeed
         speedLabel.Text = texts[lang].CurrentSpeed..walkSpeed
         if player.Character and player.Character:FindFirstChild("Humanoid") then
