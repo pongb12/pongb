@@ -221,7 +221,7 @@ local function flyToPosition(targetCFrame)
         bodyVelocity.Velocity = direction * flySpeed
         
         -- Lower flying height adjustment
-        local ray = Ray.new(hrp.Position, Vector3.new(0, -5, 0))
+        local ray = Ray.new(hrp.Position, Vector3.new(0, -2.5, 0))
         local hit = workspace:FindPartOnRay(ray, player.Character)
         
         if hit then
