@@ -1,83 +1,74 @@
-local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-function vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW(data) m=string.sub(data, 0, 55) data=data:gsub(m,'')
-
-data = string.gsub(data, '[^'..b..'=]', '') return (data:gsub('.', function(x) if (x == '=') then return '' end local r,f='',(b:find(x)-1) for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end return r; end):gsub('%d%d%d?%d?%d?%d?%d?%d?', function(x) if (#x ~= 8) then return '' end local c=0 for i=1,8 do c=c+(x:sub(i,i)=='1' and 2^(8-i) or 0) end return string.char(c) end)) end
-
-
- 
-
-
 --PongbHub--
 --Script by Pongb team--
-local Players = game:GetService(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('zSfgsHMNLiRtHgcVcIkJUCXTrRlaxFkPmOfIFQiGWxXqZbGZJpuBeceUGxheWVycw=='))
-local TweenService = game:GetService(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('TojJcCVhVlBUDLEAwUNgWTGhpPqXnBffSFQEGESBrwIxqRhhEvyNUDvVHdlZW5TZXJ2aWNl'))
-local TeleportService = game:GetService(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('DDZSmXTTzfkRgozCnqekRljzoxhsOBWZrMrAUlzZdlvPXbOvDNJsMPLVGVsZXBvcnRTZXJ2aWNl'))
-local UserInputService = game:GetService(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('dLYYDhHTZBCjAilcCniTbGEVPgfOsUGDDOSvqroEcHECZfGHPPvcvzXVXNlcklucHV0U2VydmljZQ=='))
-local RunService = game:GetService(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('JBgdhuEtMkhhSFRouBtbWttsSGsfOarywNkSXpRShotuXgXaYiwJkVGUnVuU2VydmljZQ=='))
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local TeleportService = game:GetService("TeleportService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local gui = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('GOorlYqMaBRSXwTGBOpIqoGffiSCiUzkHDjLbEeOjTsIkGikJgNaYGIU2NyZWVuR3Vp'), player:WaitForChild(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('lMWNIOeAkGMnZwRrEZEiKkWLtYTrmNFgAApLqgCyOjSrHIYUpzfIvoYUGxheWVyR3Vp')))
-gui.Name = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('fihqMBzBpyKrGTvzcNWhBQZyrNDfbjFKeBCgphXobBCbtsPGHzrgetMVUlfTWFpbg==')
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "UI_Main"
 gui.ResetOnSpawn = false
 
-
-local lang = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('EMWLiUeacARFtFYXZxUYbHnYNxIdKJdVyTuGBxLxcDfnOBLXpDYVEcndmk=')
+-- === Language Settings ===
+local lang = "vi"
 local texts = {
     vi = {
-        Title = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('VUWlClmHZfEdQqTmqKkNAHImQNBqicPRdRPlMxPPdDRicbqMeKxaHpVUG9uZ2JIdWI='),
-        SaveCP = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('NOXnQTKZqNQrEnIzZrMwUBVSXTeojUQGnDqInxcrFpVxvkRwBnenaezTMawdSBDaGVja3BvaW50'),
-        TeleCP = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('HspNGEbkSlcvmfJciRGozvdHyRnrFclSIDeVJbNuoEJwXDaXHDqPFVcVuG7gSBDaGVja3BvaW50'),
-        AutoSteal = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('jYAhypuumrExqxfUckMrNJulyYtuSbvdZuGkRXjBeTdSivNgUJCheUzQXV0byBTdGVhbA=='),
-        Rejoin = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('MbINoOdMVgdqSkkerEwZXolUiICunJgJjHUODSZqNrOYJICmSNYJYrSVsOgbyBs4bqhaSBzZXJ2ZXI='),
-        Hop = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('isjHPRTMXhiHruugrTdVkEIFaAAOxtRiukEYAhyVZyZgSowRkmrsVbxSG9wIFNlcnZlcg=='),
-        Join = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('oOEVcLCCTGOJsrCdLNSHXwtojsNYWdomWWrJSRtdzrPOdswMqJGiLimSm9pbiBKb2IgSUQ='),
-        DeleteGUI = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('lLuCOYffpTifpTJALVwNBZUTDNsPKgNvPfbbcRNgpyIXpERQLMnDyRtWG/DoSBHVUk='),
-        LangSwitch = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('XhJwHEkrOJQkIerFtWUujsbTZnSYasfIiWYjOtKDsFheQONWrODDPPpTmfDtG4gbmfhu686IFZp4buHdC9Bbmg='),
-        JobPlaceholder = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('QRvNyGEpjCefSENkSsJqFDMECDdwkANuoZenUkYaeNiFAGXExmsmMXUTmjhuq1wIEpvYiBJRA=='),
-        WalkSpeed = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('vXnxilETWsdNQuvHaiWzaWYqdEPjNtICkMjXgYMEfQDvEBFjtvupKErVOG7kWMgxJHhu5kgZGkgY2h1eeG7g24='),
-        SaveConfig = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('KhbziJDFubuayjmmlgCZbneycCtSnkdFyccFgNwNvUxqklfaplXlcyQTMawdSBj4bqldSBow6xuaA=='),
-        ResetConfig = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('iuxwJHaIiqvYKbtwuKRZALjFnUIiIyDItZIGcowAFXIWDpRNRSJeJEexJDhurd0IGzhuqFpIGPhuqV1IGjDrG5o'),
-        NoClip = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('fMqkQCdeCQnZgtqVVTzdLWtOgetLrTtGtJCWhahmuFEqoQhmRozRKajWHV5w6puIHLDoG8gY+G6o24='),
-        ConfigSaved = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('pQctSQWBiBAStYjubpmLUzWfNvXtvwCDlilOPefJStJkRGQKVTlaCRoxJDDoyBsxrB1IGPhuqV1IGjDrG5oIQ=='),
-        ConfigReset = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('DObOMWsDjFMMZpFLUAQwMhJnKIqBaRuecqShVvRuDElYjDOdsQmPVspxJDDoyDEkeG6t3QgbOG6oWkgY+G6pXUgaMOsbmgh'),
-        CPSaved = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('TuigcDIkqRLsNxcOaZfIWNXYmJNogwUIDPGZxQKJkspEZfMJibuVFxgxJDDoyBsxrB1IGNoZWNrcG9pbnQh'),
-        CPTeled = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('SIFsCfFpSYumjrBFVCvANuXZTMmUeMyJjxFjAajbHWQvxOJqwlzDXPwxJDDoyBk4buLY2ggY2h1eeG7g24gxJHhur9uIGNoZWNrcG9pbnQh'),
-        ZoomGUI = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('oqdFZpDUIpiGNdpbZxDjpysTbZcVfoVQINSGLfDericxDAtlFXiLUuf8J+Xlg=='),
-        Shortcuts = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('XoWdFhyNmnBfPlEHxJqeUyScqFScSGTTmcjtQupuCkAyxArnGpADmZnUGjDrW0gdOG6r3Q6'),
-        ShortcutList = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('TbEpmcvzinxtwIGhNvELMDPvovrGuEenlfQXspOkVfPWFooclFLGPPvRjE6IOG6qG4vaGnhu4duIEdVSVxuRjI6IFBow7NuZyB0by90aHUgbmjhu49cbkY0OiDhuqhuIGto4bqpbiBj4bqlcFxuU2hpZnQgcGjhuqNpOiDhuqhuL2hp4buHbiBHVUk='),
-        CurrentSpeed = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('mcnEqmIIAEtRXZEfmwcDeOemJStHQEpxWYeCtoaqHgUVUMXXTMelLZGVOG7kWMgxJHhu5kgaGnhu4duIHThuqFpOiA='),
-        SetSpeed = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('GcjdcbtfXIRbOcEkDyFcwIxGuzudlBrvNBRezMfrvgzTZIShAypFDOlw4FwIGThu6VuZyB04buRYyDEkeG7mQ=='),
-        SpeedUpdated = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('WArNgJubebMLKattBYLJVDyNnxlLISXQMWipFEBoHoObRYyVzdZtNebxJDDoyDEkeG6t3QgdOG7kWMgxJHhu5kgdGjDoG5oOiA=')
+        Title = "PongbHub",
+        SaveCP = "Lưu Checkpoint",
+        TeleCP = "Về Checkpoint",
+        AutoSteal = "Auto Steal",
+        Rejoin = "Vào lại server",
+        Hop = "Hop Server",
+        Join = "Join Job ID",
+        DeleteGUI = "Xoá GUI",
+        LangSwitch = "Ngôn ngữ: Việt/Anh",
+        JobPlaceholder = "Nhập Job ID",
+        WalkSpeed = "Tốc độ di chuyển",
+        SaveConfig = "Lưu cấu hình",
+        ResetConfig = "Đặt lại cấu hình",
+        NoClip = "Xuyên rào cản",
+        ConfigSaved = "Đã lưu cấu hình!",
+        ConfigReset = "Đã đặt lại cấu hình!",
+        CPSaved = "Đã lưu checkpoint!",
+        CPTeled = "Đã dịch chuyển đến checkpoint!",
+        ZoomGUI = "🗖",
+        Shortcuts = "Phím tắt:",
+        ShortcutList = "F1: Ẩn/hiện GUI\nF2: Phóng to/thu nhỏ\nF4: Ẩn khẩn cấp\nShift phải: Ẩn/hiện GUI",
+        CurrentSpeed = "Tốc độ hiện tại: ",
+        SetSpeed = "Áp dụng tốc độ",
+        SpeedUpdated = "Đã đặt tốc độ thành: "
     },
     en = {
-        Title = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('LhFgtIMHaMXmpCsWCqBCYLNhscqRwMFEWmaQrnQLnzbLkqSIogiFTisUG9uZ2JIdWI='),
-        SaveCP = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('hnEoSLEIIuJSJEPWrNAQXbxuELwnbaUJfkSPyCGfROfVvLumLHQhTbBU2F2ZSBDaGVja3BvaW50'),
-        TeleCP = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('uYfQbJhKeAQkiYTDYKwRmNPqACJzTwUToLvufHGUikPjQoAakWSawRXR28gdG8gQ2hlY2twb2ludA=='),
-        AutoSteal = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('bKQaOoYECHgahZtywBzywvJkRLmOiOanNKYLrRYvAeCRERfsdfKEFKUQXV0byBTdGVhbA=='),
-        Rejoin = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('rNyBrBeiTzTBejSwdZCbRjXxPvOSoJkjugfbAgflFJHkKtomkAyKxYrUmVqb2luIFNlcnZlcg=='),
-        Hop = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('eULjARDQvRaLbOfqmRIymhDWapHjCxXsrMQlcFvjmpnfuVcwKksBiqISG9wIFNlcnZlcg=='),
-        Join = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('KRvHUbbuBpYmzUFvAxsMyvyGFHngBYyLymqLQstVRkAqAfMVlFgUxPrSm9pbiBKb2IgSUQ='),
-        DeleteGUI = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('WmnUFpEHLpBRBiSNRcljOOeEBtjSvFvMHVxlVkSXWRVhEoEqVgWXwPdRGVsZXRlIEdVSQ=='),
-        LangSwitch = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('BhdalFEmwFVbnHzDWMBeGJtRpFSUlrLKvZUgMLmRebXAvvhQQIqwMUlTGFuZ3VhZ2U6IEVOL1ZO'),
-        JobPlaceholder = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('XsPwHoXqoCixmHMsOwPglBOUDAuBnostZCgrqUjqEBulExOYRUshvCaRW50ZXIgSm9iIElE'),
-        WalkSpeed = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('FAqmGzvfifXKUzcXBOQsYCRaHQAzjNrWJNzeNCJjyTKHbTkKUVhZHIVV2FsayBTcGVlZA=='),
-        SaveConfig = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('kNALDphvLcQxXNTfOfeSMeBdmXBnTNsSJzwqxmapWIDJKXsKcaqxqVzU2F2ZSBDb25maWc='),
-        ResetConfig = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('urfvODXMDonQSZWrvuZBbhPTqIpLyXPcPuUimIMldyGtEBGUcrqsEtbUmVzZXQgQ29uZmln'),
-        NoClip = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('lieZNOSTKoEkxIykGXlbGZuYezSsCudQuAIOKqTWJBGQngqSSlBWpXdTm9DbGlw'),
-        ConfigSaved = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('ZSkjHzagCpMfYRjuUMOfdscOrAngVzLtbzYkDZfRrjlJsPzANHfFyCHQ29uZmlnIHNhdmVkIQ=='),
-        ConfigReset = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('JvCHcBGiwOubFghaBUXckGFduhbrSqxyOORyaqPvEJWDHtZAqOSFnaBQ29uZmlnIHJlc2V0IQ=='),
-        CPSaved = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('koKDcMPXVqHOqwuCsAKlSwFIRWkvLFQZuetCNeOolodJXSpzyBlHhnGQ2hlY2twb2ludCBzYXZlZCE='),
-        CPTeled = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('CWhsEynZBNrYgXBJGXelqEkZSAWJMswLpTAwymEYdSraEuRypDIZfOxVGVsZXBvcnRlZCB0byBjaGVja3BvaW50IQ=='),
-        ZoomGUI = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('wqAhHrBFEWHOKAGKtdjxkKZjpvLkXGJNbQFBTNaUeBdbOXNQvJsoaDF8J+Xlg=='),
-        Shortcuts = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('rCfRBMJfnahyTKERooXqqtGyVLfxWHCgHkFPmbWiBFLWasYMJJuLCEiU2hvcnRjdXRzOg=='),
-        ShortcutList = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('uKSxeRdaXQljokxkjKlRWviXOSAVHBRymqGFkPiIEKBoHeJeaCtTckBRjE6IFRvZ2dsZSBHVUlcbkYyOiBab29tIEdVSVxuRjQ6IEVtZXJnZW5jeSBoaWRlXG5SaWdodCBTaGlmdDogVG9nZ2xlIEdVSQ=='),
-        CurrentSpeed = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('hzaEVzcEMBjbKeWLirXdMisEjwLXkBZCAnCuejQvIEAcyCKbBLEeqGnQ3VycmVudCBzcGVlZDog'),
-        SetSpeed = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('CpKKrZXzgIIqYOgNqWJWZUQYFqhtWkJvwplXafJizQaADfXPZiVWzJpQXBwbHkgU3BlZWQ='),
-        SpeedUpdated = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('AuZOVGLwdagKWlwERptDikdjjSrJVdDtQCkXCJzxDqmXnOeCYxolqUqU3BlZWQgc2V0IHRvOiA=')
+        Title = "PongbHub",
+        SaveCP = "Save Checkpoint",
+        TeleCP = "Go to Checkpoint",
+        AutoSteal = "Auto Steal",
+        Rejoin = "Rejoin Server",
+        Hop = "Hop Server",
+        Join = "Join Job ID",
+        DeleteGUI = "Delete GUI",
+        LangSwitch = "Language: EN/VN",
+        JobPlaceholder = "Enter Job ID",
+        WalkSpeed = "Walk Speed",
+        SaveConfig = "Save Config",
+        ResetConfig = "Reset Config",
+        NoClip = "NoClip",
+        ConfigSaved = "Config saved!",
+        ConfigReset = "Config reset!",
+        CPSaved = "Checkpoint saved!",
+        CPTeled = "Teleported to checkpoint!",
+        ZoomGUI = "🗖",
+        Shortcuts = "Shortcuts:",
+        ShortcutList = "F1: Toggle GUI\nF2: Zoom GUI\nF4: Emergency hide\nRight Shift: Toggle GUI",
+        CurrentSpeed = "Current speed: ",
+        SetSpeed = "Apply Speed",
+        SpeedUpdated = "Speed set to: "
     }
 }
 
-
+-- === Global Variables ===
 local cp
 local autoStealActive = false
 local noClipActive = false
@@ -85,14 +76,14 @@ local walkSpeed = 16
 local baseWalkSpeed = 16
 local isGUIMaximized = false
 
-
+-- GUI Size Settings
 local originalGUISize = UDim2.new(0, 550, 0, 380)
 local originalGUIPosition = UDim2.new(0.5, -275, 0.5, -190)
 local maximizedGUISize = UDim2.new(0, 700, 0, 500)
 local maximizedGUIPosition = UDim2.new(0.5, -350, 0.5, -250)
 
-
-local main = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('FWSMMHQgkwWRmlHfLWBYemmrLPoXZSvEcUbJYwqObiirWPPPsvmVnsWRnJhbWU='), gui)
+-- === Main GUI ===
+local main = Instance.new("Frame", gui)
 main.Size = originalGUISize
 main.Position = originalGUIPosition
 main.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -101,21 +92,21 @@ main.Active = true
 main.Draggable = true
 main.Visible = true
 
-local corner = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('uwXpSuGrbdTFAneGiKKvuEFCfqwCREBgnuerNLCPwcTxETZqFqWMEKaVUlDb3JuZXI='), main)
+local corner = Instance.new("UICorner", main)
 corner.CornerRadius = UDim.new(0, 8)
 
-local stroke = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('WRWNECWLPTpQfYAdCYeDYcNJexMuLQBuIbsFtBolLRYxxdDFsrAQVNLVUlTdHJva2U='), main)
+local stroke = Instance.new("UIStroke", main)
 stroke.Thickness = 2
 stroke.Color = Color3.fromRGB(80, 80, 80)
 stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
-
-local titleBar = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('ByaDDuGEoaNdLvCcHhTbfZdeMRMyzZlMNOdZkRnneEewsTJJstIeyTLRnJhbWU='), main)
+-- Title Bar with Zoom Button
+local titleBar = Instance.new("Frame", main)
 titleBar.Size = UDim2.new(1, 0, 0, 32)
 titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-titleBar.Name = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('hImnUSDdrCoaxXkROPWHGvGNNmPwvYNvtXgJhTXihzAorNCSgkXNqyVVGl0bGVCYXI=')
+titleBar.Name = "TitleBar"
 
-local title = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('rHDGucEhDUBaFHEzBqOHQJxPrhamQZWiSCUcmouCZOlpMpHroOOTbwPVGV4dExhYmVs'), titleBar)
+local title = Instance.new("TextLabel", titleBar)
 title.Size = UDim2.new(1, -40, 1, 0)
 title.BackgroundTransparency = 1
 title.TextColor3 = Color3.new(1, 1, 1)
@@ -125,7 +116,7 @@ title.TextSize = 18
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Position = UDim2.new(0, 12, 0, 0)
 
-local zoomBtn = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('bdMpAKkCXyFZkroFHCyOuPwdlotwOvnqQdAmwtIpGXHZExntogDczXVVGV4dEJ1dHRvbg=='), titleBar)
+local zoomBtn = Instance.new("TextButton", titleBar)
 zoomBtn.Size = UDim2.new(0, 32, 0, 32)
 zoomBtn.Position = UDim2.new(1, -32, 0, 0)
 zoomBtn.Text = texts[lang].ZoomGUI
@@ -133,33 +124,33 @@ zoomBtn.BackgroundTransparency = 1
 zoomBtn.TextColor3 = Color3.new(1, 1, 1)
 zoomBtn.Font = Enum.Font.GothamBold
 zoomBtn.TextSize = 16
-zoomBtn.Name = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('wXGZBySzkOINopfXLBakQJAlRENeeFGrhNcblIOdOsOGDHessdkpiXbWm9vbUJ1dHRvbg==')
+zoomBtn.Name = "ZoomButton"
 
-
-local tabList = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('QkOXifuFkXMUvuNTeZSksITIzsfSUWPSwpEGPelsqIkGnNIhXdHOMHbRnJhbWU='), main)
+-- Tab List
+local tabList = Instance.new("Frame", main)
 tabList.Size = UDim2.new(0, 120, 1, -32)
 tabList.Position = UDim2.new(0, 0, 0, 32)
 tabList.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 
-
-local content = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('zBvCyAuoMkBtJkpuwRDtBcQlAbCYgAAgLcNEUATgnQTErOTRAWXDMhKRnJhbWU='), main)
+-- Content Frame
+local content = Instance.new("Frame", main)
 content.Size = UDim2.new(1, -120, 1, -32)
 content.Position = UDim2.new(0, 120, 0, 32)
 content.BackgroundTransparency = 1
 content.ClipsDescendants = true
 
-
+-- === Utility Functions ===
 local function showNotification(title, text)
-    game.StarterGui:SetCore(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('EAeGPxFpljDQDwiOtsDMKxOvMJteUzNPcYQeodhdaVUJRwKYirYJtYgU2VuZE5vdGlmaWNhdGlvbg=='), {
+    game.StarterGui:SetCore("SendNotification", {
         Title = title,
         Text = text,
         Duration = 2,
-        Icon = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('ESFrSxjGDLcIOwbcnWvhDCxFjZmRfDPvERhlkNcWovVsEqsFHpObRxIcmJ4YXNzZXRpZDovLzY3MjY1NzU4ODU=')
+        Icon = "rbxassetid://6726575885"
     })
 end
 
 local function createTabButton(name, posY)
-    local btn = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('hXRttXLgYiYYzMXqulwOMaPnXNqjafJLyWHpQeTpvpVWMSYAnjvOEVZVGV4dEJ1dHRvbg=='), tabList)
+    local btn = Instance.new("TextButton", tabList)
     btn.Size = UDim2.new(1, -8, 0, 40)
     btn.Position = UDim2.new(0, 4, 0, posY)
     btn.Text = name
@@ -169,7 +160,7 @@ local function createTabButton(name, posY)
     btn.Font = Enum.Font.Gotham
     btn.AutoButtonColor = false
     
-    local btnCorner = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('cFYIoUJTuKGAvxYiEMHYsFaFtKRWoiyLZMOpJQyakfVezBPvxRVBbNaVUlDb3JuZXI='), btn)
+    local btnCorner = Instance.new("UICorner", btn)
     btnCorner.CornerRadius = UDim.new(0, 4)
     
     btn.MouseEnter:Connect(function()
@@ -184,7 +175,7 @@ local function createTabButton(name, posY)
 end
 
 local function createTabFrame()
-    local frame = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('CBaoddENXNoDJobJoaCApOTlrfHctIakfbwkILmvFJTjfjkmrGFWSmPU2Nyb2xsaW5nRnJhbWU='), content)
+    local frame = Instance.new("ScrollingFrame", content)
     frame.Size = UDim2.new(1, 0, 1, 0)
     frame.BackgroundTransparency = 1
     frame.Visible = false
@@ -194,7 +185,7 @@ local function createTabFrame()
 end
 
 local function addButton(tab, key, posY, callback)
-    local btn = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('IVYOFnSmXwFOQOuKNozjpFDZeXtnuEtWoaVRyZVdJNRxXAtZSnTIqZeVGV4dEJ1dHRvbg=='), tab)
+    local btn = Instance.new("TextButton", tab)
     btn.Size = UDim2.new(0, 250, 0, 36)
     btn.Position = UDim2.new(0, 20, 0, posY)
     btn.Text = texts[lang][key] or key
@@ -204,7 +195,7 @@ local function addButton(tab, key, posY, callback)
     btn.TextColor3 = Color3.new(1, 1, 1)
     btn.Name = key
     
-    local btnCorner = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('RdkUNHIiJkbWpHvgQrkuhNUGCnSPgiXZhtxAQIOobNKqxOQweZXtbQNVUlDb3JuZXI='), btn)
+    local btnCorner = Instance.new("UICorner", btn)
     btnCorner.CornerRadius = UDim.new(0, 4)
     
     btn.MouseEnter:Connect(function()
@@ -236,7 +227,7 @@ local function addToggleButton(tab, key, posY, callback)
     return btn
 end
 
-
+-- === Create Tabs ===
 local tabs = {
     Steal = createTabFrame(),
     Misc = createTabFrame(),
@@ -244,12 +235,12 @@ local tabs = {
 }
 
 local tabButtons = {
-    Steal = createTabButton(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('uXkdMKLzOksrkEmeXGDdXYSZTEIbzqxZURdugMMWRThjWrkvIqTxoAfU3RlYWw='), 4),
-    Misc = createTabButton(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('ybetHJTGsIEMNzlKFsvADLAwHcFoFjDxBLzRlihdHqAnfCpRvIhgowqTWlzYw=='), 48),
-    Setting = createTabButton(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('RHgiuRRKhvTgTQKcgXjaiewGKmvEkTNsJgbjKpkjKpeLavJDuwDQNfPU2V0dGluZw=='), 92)
+    Steal = createTabButton("Steal", 4),
+    Misc = createTabButton("Misc", 48),
+    Setting = createTabButton("Setting", 92)
 }
 
-
+-- Tab Animation
 local function fadeTo(tabName)
     for name, frame in pairs(tabs) do
         if name == tabName then
@@ -267,11 +258,12 @@ for name, btn in pairs(tabButtons) do
     end)
 end
 
-
+-- === STEAL TAB ===
+-- NoClip Function
 local function noclipLoop()
     while noClipActive and player.Character do
         for _, part in pairs(player.Character:GetDescendants()) do
-            if part:IsA(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('YMKqGOKjaQiPwpvZdoFxwmgKRCUfFYZOBSYvhTAPDDjMdUEKuisZGbxQmFzZVBhcnQ=')) then
+            if part:IsA("BasePart") then
                 part.CanCollide = false
             end
         end
@@ -279,35 +271,35 @@ local function noclipLoop()
     end
 end
 
-addButton(tabs.Steal, vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('UBQjySaqjUMxlukkFcgGonPgOblCywBbEvhYqCSrVTOZcQsmEdrnqxxU2F2ZUNQ'), 20, function()
-    local hrp = player.Character and player.Character:FindFirstChild(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('ivcUqdLcvMSYrqKgmIBGsJehGCdkSFxUTITCdUNnSrWyDOkfMELaERGSHVtYW5vaWRSb290UGFydA=='))
+addButton(tabs.Steal, "SaveCP", 20, function()
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if hrp then 
         cp = hrp.CFrame
         showNotification(texts[lang].Title, texts[lang].CPSaved)
     end
 end)
 
-addButton(tabs.Steal, vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('rhKUIOaXBPZXuDJskXWjApemFBWGygoqaEFKMiLpnimvaKvRjVqmHibVGVsZUNQ'), 60, function()
-    local hrp = player.Character and player.Character:FindFirstChild(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('yIVrUwSfFbYvXTiSUyJzdBOrpCmcZPykQZQzZzXDENXhAvPgzsxGPebSHVtYW5vaWRSb290UGFydA=='))
+addButton(tabs.Steal, "TeleCP", 60, function()
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if cp and hrp then 
         hrp.CFrame = cp
         showNotification(texts[lang].Title, texts[lang].CPTeled)
     end
 end)
 
-addToggleButton(tabs.Steal, vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('GkxtDRjCQiqzjZYXXbgNiivctcaFORITVMbSXdvbcscKULhUFRBDaurQXV0b1N0ZWFs'), 100, function(active)
+addToggleButton(tabs.Steal, "AutoSteal", 100, function(active)
     autoStealActive = active
     if active then
         spawn(function()
-            local humanoid = player.Character and player.Character:FindFirstChild(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('swnOLzKXRmFvaSXZumfUYcJsGnVKmLdjHVSWpTPJLTRVqcjsWsPnonASHVtYW5vaWQ='))
+            local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
             if humanoid then
                 baseWalkSpeed = humanoid.WalkSpeed
                 humanoid.WalkSpeed = 32
             end
             
             while autoStealActive and player.Character do
-                local hrp = player.Character:FindFirstChild(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('ZZXPBjZwwWLYPWchotGQTeVITgxkahbaAdimPXjyZcbFqDcKugfzULBSHVtYW5vaWRSb290UGFydA=='))
-                humanoid = player.Character:FindFirstChild(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('DqRFBwvxIjLuZtaJgCmNSsIgiWAjULvnmZpvoiQOalMOuaTQbxQVtzISHVtYW5vaWQ='))
+                local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+                humanoid = player.Character:FindFirstChild("Humanoid")
                 
                 if cp and hrp and humanoid then
                     humanoid:MoveTo(cp.Position)
@@ -331,59 +323,60 @@ addToggleButton(tabs.Steal, vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqI
                 task.wait(0.5)
             end
             
-            if player.Character and player.Character:FindFirstChild(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('cyNPQpmbXybtFIPxPLQismzOrjKNNaunvykZtlxSgCVSBGknDDYleAZSHVtYW5vaWQ=')) then
+            if player.Character and player.Character:FindFirstChild("Humanoid") then
                 player.Character.Humanoid.WalkSpeed = baseWalkSpeed
             end
         end)
     else
-        if player.Character and player.Character:FindFirstChild(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('JpzOwQMAZZDUlXnWnEVeVzhZQQjvhZkWEcfyXWkCzssFfTiTEQcNBmQSHVtYW5vaWQ=')) then
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
             player.Character.Humanoid.WalkSpeed = baseWalkSpeed
         end
     end
 end)
 
-addToggleButton(tabs.Steal, vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('DEdxnRPmvpRDnWRirVAzMaZGQlSvvJprxTMaCiPcLroXjEFmRCrhtsgTm9DbGlw'), 140, function(active)
+addToggleButton(tabs.Steal, "NoClip", 140, function(active)
     noClipActive = active
     if active then
         spawn(noclipLoop)
     end
 end)
 
-
-addButton(tabs.Misc, vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('JUmKVKcBUrHdYkcDJmbVnBBaZFoUmfhbiTnobwXPCnAMpebaijRWhZZUmVqb2lu'), 20, function()
+-- === MISC TAB ===
+addButton(tabs.Misc, "Rejoin", 20, function()
     TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId)
 end)
 
-addButton(tabs.Misc, vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('BLLpsQsiVEFsuMJExsvIDyBXrnGZfWzXzOAofdNFMLAQcvnBpDqylmGSG9w'), 60, function()
+addButton(tabs.Misc, "Hop", 60, function()
     TeleportService:TeleportToPlaceInstance(game.PlaceId)
 end)
 
-local jobBox = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('cmgYHjGzZwBXvqsmgUPJEhBocIvlKMzwWYLOTQGLMubJXYhnNayNPFkVGV4dEJveA=='), tabs.Misc)
+local jobBox = Instance.new("TextBox", tabs.Misc)
 jobBox.Size = UDim2.new(0, 250, 0, 36)
 jobBox.Position = UDim2.new(0, 20, 0, 100)
 jobBox.PlaceholderText = texts[lang].JobPlaceholder
-jobBox.Text = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('SFFnlVySkwBghtmiygXJeVypSiiWFyvYrVEiRUIEHtMgZiQUKObLGsa')
+jobBox.Text = ""
 jobBox.ClearTextOnFocus = false
 jobBox.TextSize = 14
 jobBox.Font = Enum.Font.Gotham
 jobBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 jobBox.TextColor3 = Color3.new(1, 1, 1)
 
-local boxCorner = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('jmueyIWUhCQwtNxesdLULlGclIsLHeIaWFVWSuloeKeSUJWqSSpwTSxVUlDb3JuZXI='), jobBox)
+local boxCorner = Instance.new("UICorner", jobBox)
 boxCorner.CornerRadius = UDim.new(0, 4)
 
-addButton(tabs.Misc, vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('VGDEqAEJrBwbPPEQlurqfxhlVlfZqBrlnFPbSwFcQFfeBGZbOHKSByDSm9pbg=='), 140, function()
-    if jobBox.Text ~= vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('CcRUnUaFLKkBtHSIclQYAKUJjJNcIwhGQnJRfxNOLMWyHiNGQqfDfsk') then
+addButton(tabs.Misc, "Join", 140, function()
+    if jobBox.Text ~= "" then
         TeleportService:TeleportToPlaceInstance(game.PlaceId, jobBox.Text)
     end
 end)
 
-addButton(tabs.Misc, vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('QpjvseBNQdpyJMhPMlxUpXrvJnDERqyeBgjGpAMHSTTrDgOLaaxZnxwRGVsZXRlR1VJ'), 180, function()
+addButton(tabs.Misc, "DeleteGUI", 180, function()
     gui:Destroy()
 end)
 
-
-local speedLabel = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('sxeFORzUhGwwGRhtvgabqYsMQvBEgmfclKOnIkeopXFeRyajyvetDVeVGV4dExhYmVs'), tabs.Setting)
+-- === SETTING TAB ===
+-- Speed Control
+local speedLabel = Instance.new("TextLabel", tabs.Setting)
 speedLabel.Size = UDim2.new(0, 250, 0, 20)
 speedLabel.Position = UDim2.new(0, 20, 0, 20)
 speedLabel.Text = texts[lang].CurrentSpeed..walkSpeed
@@ -393,18 +386,18 @@ speedLabel.BackgroundTransparency = 1
 speedLabel.TextColor3 = Color3.new(1, 1, 1)
 speedLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-local speedSlider = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('cQffeDmlPturkytyREGtfqtulVKELprQyNJyeoiNXqHAQRhGJusqONrVGV4dEJveA=='), tabs.Setting)
+local speedSlider = Instance.new("TextBox", tabs.Setting)
 speedSlider.Size = UDim2.new(0, 250, 0, 36)
 speedSlider.Position = UDim2.new(0, 20, 0, 40)
 speedSlider.Text = tostring(walkSpeed)
-speedSlider.PlaceholderText = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('dEtheyWsmMVYdSLJqgLffPpdZDcFBxbLTdTEgcKZYmxnPKAQfbSdxVJMTYtMTAw')
+speedSlider.PlaceholderText = "16-100"
 speedSlider.TextSize = 14
 speedSlider.Font = Enum.Font.Gotham
 speedSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 speedSlider.TextColor3 = Color3.new(1, 1, 1)
 speedSlider.ClearTextOnFocus = false
 
-local sliderCorner = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('WdbLZyWaoCsPpLwaZXcfwdzUOWXfwjqrdOQenXQazkEnohffKaIQaHcVUlDb3JuZXI='), speedSlider)
+local sliderCorner = Instance.new("UICorner", speedSlider)
 sliderCorner.CornerRadius = UDim.new(0, 4)
 
 local function updateWalkSpeed()
@@ -413,7 +406,7 @@ local function updateWalkSpeed()
         walkSpeed = newSpeed
         speedLabel.Text = texts[lang].CurrentSpeed..walkSpeed
         
-        if player.Character and player.Character:FindFirstChild(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('hxqUBRyzTLguirCDgSHKUkcFCjCVHPIQMtIqiLNpVbGVqWutseQtzAaSHVtYW5vaWQ=')) then
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
             if not autoStealActive then
                 player.Character.Humanoid.WalkSpeed = walkSpeed
             end
@@ -430,29 +423,29 @@ speedSlider.FocusLost:Connect(function(enterPressed)
     end
 end)
 
-addButton(tabs.Setting, vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('CvtBtVEjRTmiabBxVdksYOIFLzjiPTMmCFXRnVpuzLJSRfhsOCTizcuU2V0U3BlZWQ='), 80, function()
+addButton(tabs.Setting, "SetSpeed", 80, function()
     updateWalkSpeed()
 end)
 
-
-addButton(tabs.Setting, vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('gQreVlsUYEwVUFsThqkTTqtSglhxkwViNjUVvaIhPRrmqZeOCxjHtErTGFuZ1N3aXRjaA=='), 140, function()
-    lang = (lang == vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('QGuCxVkbbhlcStEymoeaJzVLRzrqrYgKGFAgsdIxPxzLTEYMtAFUNKddmk=')) and vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('IDcGBbvJiknMUKNwhLClnCyHWQloAoDPvdKydEapIfxEHsdRdZvyXSxZW4=') or vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('EvfaUPTRqcuOyPmjLOdBkIOsfdadGiJXYqsrOPhbIZKLWHndeWgriFbdmk=')
+-- Language Switch
+addButton(tabs.Setting, "LangSwitch", 140, function()
+    lang = (lang == "vi") and "en" or "vi"
     title.Text = texts[lang].Title
     jobBox.PlaceholderText = texts[lang].JobPlaceholder
     speedLabel.Text = texts[lang].CurrentSpeed..walkSpeed
     
-    
+    -- Update all buttons text
     for _, tab in pairs(tabs) do
         for _, child in pairs(tab:GetChildren()) do
-            if child:IsA(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('dASVDpUCsxJMwHVxCsrdHNynnbUHBBCghxhBMnNKBqCzSWpCEhMqgzyVGV4dEJ1dHRvbg==')) and texts[lang][child.Name] then
+            if child:IsA("TextButton") and texts[lang][child.Name] then
                 child.Text = texts[lang][child.Name]
             end
         end
     end
 end)
 
-
-local shortcutsLabel = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('dLsLCdKYjQSikxEJDfIwDtXTHHiyrXXzgblPLVYlCVvKYZlxTRXvhFsVGV4dExhYmVs'), tabs.Setting)
+-- Shortcuts Info
+local shortcutsLabel = Instance.new("TextLabel", tabs.Setting)
 shortcutsLabel.Size = UDim2.new(0, 250, 0, 20)
 shortcutsLabel.Position = UDim2.new(0, 20, 0, 200)
 shortcutsLabel.Text = texts[lang].Shortcuts
@@ -462,7 +455,7 @@ shortcutsLabel.BackgroundTransparency = 1
 shortcutsLabel.TextColor3 = Color3.new(1, 1, 1)
 shortcutsLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-local shortcutsText = Instance.new(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('cJxziMOWIdaKiDVpoLdBeSjWwAOkEHABvRVPRnKRneKDZNuykRiPmWuVGV4dExhYmVs'), tabs.Setting)
+local shortcutsText = Instance.new("TextLabel", tabs.Setting)
 shortcutsText.Size = UDim2.new(0, 250, 0, 100)
 shortcutsText.Position = UDim2.new(0, 20, 0, 220)
 shortcutsText.Text = texts[lang].ShortcutList
@@ -473,26 +466,26 @@ shortcutsText.TextColor3 = Color3.new(0.8, 0.8, 0.8)
 shortcutsText.TextXAlignment = Enum.TextXAlignment.Left
 shortcutsText.TextYAlignment = Enum.TextYAlignment.Top
 
-
-addButton(tabs.Setting, vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('PpOfjxXhUCIUWXUFmaKuFWfGJCoWwkPDGXIkVOwEHsegRYFEbrqSssKU2F2ZUNvbmZpZw=='), 340, function()
-   
+-- Config Buttons
+addButton(tabs.Setting, "SaveConfig", 340, function()
+    -- Save configuration here
     showNotification(texts[lang].Title, texts[lang].ConfigSaved)
 end)
 
-addButton(tabs.Setting, vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('BrmzZrHHwJyEbbUKMoZKdSpShaEJrpMnvKJxANogguHsiTdNdYNRtfgUmVzZXRDb25maWc='), 380, function()
+addButton(tabs.Setting, "ResetConfig", 380, function()
     walkSpeed = 16
-    speedSlider.Text = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('cvVMDmsqKeDKfGeApZsoKJwtBDLJbFdqHcmHonRGKuCSijlEDULrXQmMTY=')
+    speedSlider.Text = "16"
     updateWalkSpeed()
     showNotification(texts[lang].Title, texts[lang].ConfigReset)
 end)
 
-
+-- === GUI Zoom Function ===
 zoomBtn.MouseButton1Click:Connect(function()
     isGUIMaximized = not isGUIMaximized
     if isGUIMaximized then
         main.Size = maximizedGUISize
         main.Position = maximizedGUIPosition
-        zoomBtn.Text = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('eWkVSpvgrYrTjRDFujelzpnSFnmwewrtZVwJAhYPvWQEBeKNNhYTiOg8J+Xlw==')
+        zoomBtn.Text = "🗗"
     else
         main.Size = originalGUISize
         main.Position = originalGUIPosition
@@ -500,27 +493,27 @@ zoomBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-
+-- === Keyboard Shortcuts ===
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
-   
+    -- Toggle GUI visibility
     if input.KeyCode == Enum.KeyCode.F1 or input.KeyCode == Enum.KeyCode.RightShift then
         main.Visible = not main.Visible
     end
     
-    
+    -- Emergency hide
     if input.KeyCode == Enum.KeyCode.F4 then
         gui.Enabled = not gui.Enabled
     end
     
-   
+    -- Zoom GUI
     if input.KeyCode == Enum.KeyCode.F2 then
         isGUIMaximized = not isGUIMaximized
         if isGUIMaximized then
             main.Size = maximizedGUISize
             main.Position = maximizedGUIPosition
-            zoomBtn.Text = vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('ynghkwCadWqnjFiBFeaoiMMalkiJgmRzBqsvXwqbGyXospKtZTUOOKU8J+Xlw==')
+            zoomBtn.Text = "🗗"
         else
             main.Size = originalGUISize
             main.Position = originalGUIPosition
@@ -529,7 +522,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
-
+-- === Anti-Cheat Protection ===
 local AntiBan = {
     Active = true,
     LastCheck = 0,
@@ -538,7 +531,7 @@ local AntiBan = {
         if tick() - self.LastCheck < 30 then return true end
         self.LastCheck = tick()
         
-        local unsafe = {vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('AOpEbdnEYvwksRTsYLucSnbGWmcdBhSJYAnDvCvrCzDomyscTFhNAzVQW50aUNoZWF0'), vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('KOxIGotmRXuTWQRbendKtkbVfiXnuPEHQyYBELWDwehvbaZvQCTmFySQUM='), vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('fEOfEMhbFYjhTwczzZQRMDSyWXhcwgUXKBtEGpAidPscldCTvDBPqwAQmFkZ2Vy'), vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('hYgADHZbQNPMMFjCdbPOSaZDdxjApyUdwBOoEZOFjROCBBQMDlCslEvVkFD')}
+        local unsafe = {"AntiCheat", "AC", "Badger", "VAC"}
         for _, name in pairs(unsafe) do
             if game:GetService(name) then
                 return false
@@ -548,14 +541,14 @@ local AntiBan = {
     end,
     
     HandleKick = function(self, code)
-        if code and code:find(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('rCObBKrAdcgJpGkZDWfoKAvirZHJECzoTdeRCtdonnKrBVfJHyJHwBnQkFDJS0xMDI2MQ==')) then
+        if code and code:find("BAC%-10261") then
             task.wait(300)
             TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId)
         end
     end
 }
 
-game:GetService(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('cnPHvsznnkfArFECBoxxqqLQyZWHqRxRTsmdYkQTeUafrpEnRZAysyYUGxheWVycw==')).PlayerRemoving:Connect(function(p)
+game:GetService("Players").PlayerRemoving:Connect(function(p)
     if p == player and AntiBan.Active then
         AntiBan:HandleKick(p.KickMessage)
     end
@@ -571,10 +564,10 @@ spawn(function()
     end
 end)
 
+-- Initialize
+fadeTo("Steal")
 
-fadeTo(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('iMjfEHXpGGpXVrTecwxuAvwClJRUGXIgPgfsdoZJIiCFwQNtWYJhwHKU3RlYWw='))
-
-
-if player.Character and player.Character:FindFirstChild(vswIocJFQCaXbauULuherxwXclDzPPMkWETlochsNQHZXuZecJqIpphQfyViUoXCQzRwBkQhLFggBVfTFgwhyW('mKTabFOCuiGccRGCxCWEvvGJwvZAtUmoBGKOZRxSZTpCLKvyYgvJEWzSHVtYW5vaWQ=')) then
+-- Apply initial walk speed
+if player.Character and player.Character:FindFirstChild("Humanoid") then
     player.Character.Humanoid.WalkSpeed = walkSpeed
-end    
+end
