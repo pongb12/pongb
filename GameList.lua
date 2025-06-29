@@ -1,5 +1,4 @@
 local Games = {
-  [2753915549] = "https://raw.githubusercontent.com/AhmadV99/Script-Games/main/Blox%20Fruit.lua", --Steal a Brainrot
-
+  [109983668079237] = "https://raw.githubusercontent.com/pongb12/pongb/refs/heads/main/GameList.lua", --Steal a Brainrot
 
 return Games
