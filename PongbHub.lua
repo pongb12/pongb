@@ -477,7 +477,7 @@ local function flyToPosition(targetCFrame)
     local startTime = tick()
     local distance = (hrp.Position - targetCFrame.Position).Magnitude
 
-    while autoStealActive and (tick() - startTime < distance / flySpeed * 2.5) do
+    while autoStealActive and (tick() - startTime < distance / flySpeed * 1.7) do
         if not player.Character or not hrp or not bodyVelocity then break end
 
         local direction = (targetCFrame.Position - hrp.Position).Unit
