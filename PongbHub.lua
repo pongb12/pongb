@@ -94,7 +94,7 @@ local maximizedGUISize = UDim2.new(0, 400, 0, 550)
 -- === Main GUI ===
 local main = Instance.new("Frame", gui)
 main.Size = originalGUISize
-main.Position = UDim2.new(0.5, -150, 0.5, -225)
+main.Position = UDim2.new(0.5, 0, 0.5, 0)
 main.AnchorPoint = Vector2.new(0.5, 0.5)
 main.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 main.Active = true
