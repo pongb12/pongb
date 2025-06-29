@@ -483,13 +483,14 @@ local function flyToPosition(targetCFrame)
         local direction = (targetCFrame.Position - hrp.Position).Unit
         bodyVelocity.Velocity = direction * flySpeed
 
-        local ray = workspace:Raycast(hrp.Position, Vector3.new(0, -0.5, 0))
+        local ray = workspace:Raycast(hrp.Position, Vector3.new(0, -3, 0), raycastParams)
         
         if ray then
-            bodyVelocity.Velocity = Vector3.new(bodyVelocity.Velocity.X, flyHeight, bodyVelocity.Velocity.Z)
-        else
-            bodyVelocity.Velocity = Vector3.new(bodyVelocity.Velocity.X, 0, bodyVelocity.Velocity.Z)
+             bodyVelocity.Velocity = Vector3.new(bodyVelocity.Velocity.X, math.min(0, bodyVelocity.Velocity.Y), bodyVelocity.Velocity.Z)
+        else 
+             bodyVelocity.Velocity = Vector3.new(bodyVelocity.Velocity.X, -5, bodyVelocity.Velocity.Z)
         end
+
 
         RunService.Heartbeat:Wait()
     end
