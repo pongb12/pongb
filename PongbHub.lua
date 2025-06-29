@@ -1,4 +1,4 @@
---PongbHub - Fixed Version--
+--PongbHub - Improved Version--
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
@@ -36,7 +36,6 @@ local texts = {
         DeleteCP = "Xóa CP hiện tại",
         CPList = "Danh sách CP:",
         AutoStealComplete = "Auto Steal hoàn thành!",
-        -- Thêm các text mới cho Misc và Settings
         Misc = "Tính năng khác",
         Settings = "Cài đặt",
         Language = "Ngôn ngữ",
@@ -65,7 +64,6 @@ local texts = {
         DeleteCP = "Delete Current CP",
         CPList = "CP List:",
         AutoStealComplete = "Auto Steal complete!",
-        -- Thêm các text mới cho Misc và Settings
         Misc = "Miscellaneous",
         Settings = "Settings",
         Language = "Language",
@@ -81,20 +79,22 @@ local currentCPIndex = 1
 local autoStealActive = false
 local noClipActive = false
 local walkSpeed = 16
-local isGUIMaximized = false
+local isGUIMaximized = true -- Start maximized
+local isGUIMinimized = false
 local flyHeight = 5
 local flySpeed = 45
 local activeFeatures = {}
 local gameId = 109983668079237
 
 -- GUI Size Settings
-local originalGUISize = UDim2.new(0, 300, 0, 450) -- Tăng chiều cao để chứa thêm nội dung
+local originalGUISize = UDim2.new(0, 300, 0, 450)
 local maximizedGUISize = UDim2.new(0, 400, 0, 550)
+local minimizedGUISize = UDim2.new(0, 150, 0, 30)
 
 -- === Main GUI ===
 local main = Instance.new("Frame", gui)
-main.Size = originalGUISize
-main.Position = UDim2.new(0.5, 0, 0.5, 0)
+main.Size = maximizedGUISize
+main.Position = UDim2.new(0.5, 0, 0.5, 0) -- Centered
 main.AnchorPoint = Vector2.new(0.5, 0.5)
 main.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 main.Active = true
@@ -125,18 +125,46 @@ title.Text = texts[lang].Title
 title.Font = Enum.Font.GothamBold
 title.TextSize = 18
 
--- Minimize/Maximize Button
-local toggleButton = Instance.new("TextButton", titleBar)
-toggleButton.Size = UDim2.new(0, 25, 0, 25)
-toggleButton.Position = UDim2.new(1, -30, 0, 2)
-toggleButton.Text = "-"
-toggleButton.TextSize = 16
-toggleButton.Font = Enum.Font.GothamBold
-toggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-toggleButton.TextColor3 = Color3.new(1, 1, 1)
+-- Minimize/Maximize/Close Buttons
+local closeButton = Instance.new("TextButton", titleBar)
+closeButton.Size = UDim2.new(0, 25, 0, 25)
+closeButton.Position = UDim2.new(1, -30, 0, 2)
+closeButton.Text = "X"
+closeButton.TextSize = 16
+closeButton.Font = Enum.Font.GothamBold
+closeButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+closeButton.TextColor3 = Color3.new(1, 1, 1)
+closeButton.ZIndex = 2
 
-local toggleCorner = Instance.new("UICorner", toggleButton)
-toggleCorner.CornerRadius = UDim.new(0, 4)
+local closeCorner = Instance.new("UICorner", closeButton)
+closeCorner.CornerRadius = UDim.new(0, 4)
+
+local minimizeButton = Instance.new("TextButton", titleBar)
+minimizeButton.Size = UDim2.new(0, 25, 0, 25)
+minimizeButton.Position = UDim2.new(1, -60, 0, 2)
+minimizeButton.Text = "─"
+minimizeButton.TextSize = 16
+minimizeButton.Font = Enum.Font.GothamBold
+minimizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+minimizeButton.TextColor3 = Color3.new(1, 1, 1)
+minimizeButton.ZIndex = 2
+
+local minimizeCorner = Instance.new("UICorner", minimizeButton)
+minimizeCorner.CornerRadius = UDim.new(0, 4)
+
+local maximizeButton = Instance.new("TextButton", titleBar)
+maximizeButton.Size = UDim2.new(0, 25, 0, 25)
+maximizeButton.Position = UDim2.new(1, -90, 0, 2)
+maximizeButton.Text = "►"
+maximizeButton.TextSize = 16
+maximizeButton.Font = Enum.Font.GothamBold
+maximizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+maximizeButton.TextColor3 = Color3.new(1, 1, 1)
+maximizeButton.Visible = false -- Hidden by default
+maximizeButton.ZIndex = 2
+
+local maximizeCorner = Instance.new("UICorner", maximizeButton)
+maximizeCorner.CornerRadius = UDim.new(0, 4)
 
 -- Content Frame
 local content = Instance.new("ScrollingFrame", main)
@@ -144,7 +172,7 @@ content.Size = UDim2.new(1, -10, 1, -40)
 content.Position = UDim2.new(0, 5, 0, 35)
 content.BackgroundTransparency = 1
 content.ScrollBarThickness = 4
-content.CanvasSize = UDim2.new(0, 0, 0, 800) -- Tăng canvas size
+content.CanvasSize = UDim2.new(0, 0, 0, 800)
 
 -- Tab System
 local tabContainer = Instance.new("Frame", content)
@@ -174,6 +202,42 @@ settingsTab.Size = UDim2.new(1, -10, 0, 200)
 settingsTab.Position = UDim2.new(0, 5, 0, 40)
 settingsTab.BackgroundTransparency = 1
 settingsTab.Visible = false
+
+-- Function to update all GUI text elements when language changes
+local function updateLanguage()
+    -- Update title
+    title.Text = texts[lang].Title
+    
+    -- Update tab buttons
+    for _, child in pairs(tabContainer:GetChildren()) do
+        if child:IsA("TextButton") then
+            if child.Text == texts["vi"].Title or child.Text == texts["en"].Title then
+                child.Text = texts[lang].Title
+            elseif child.Text == texts["vi"].Misc or child.Text == texts["en"].Misc then
+                child.Text = texts[lang].Misc
+            elseif child.Text == texts["vi"].Settings or child.Text == texts["en"].Settings then
+                child.Text = texts[lang].Settings
+            end
+        end
+    end
+    
+    -- Update buttons and labels
+    for _, frame in pairs({mainTab, miscTab, settingsTab}) do
+        for _, child in pairs(frame:GetChildren()) do
+            if child:IsA("TextButton") or child:IsA("TextLabel") then
+                for key, value in pairs(texts[lang]) do
+                    if child.Text == texts["vi"][key] or child.Text == texts["en"][key] then
+                        child.Text = value
+                        break
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Update CP dropdown
+    updateCPDropdown()
+end
 
 -- Function to create tab buttons
 local function createTab(name, targetFrame, posX)
@@ -215,7 +279,7 @@ mainTabBtn.BackgroundColor3 = Color3.fromRGB(30, 150, 30) -- Active by default
 local miscTabBtn = createTab("Misc", miscTab, 1)
 local settingsTabBtn = createTab("Settings", settingsTab, 2)
 
--- === Checkpoint System (Fixed) ===
+-- === Checkpoint System ===
 local cpDropdown = Instance.new("TextButton", mainTab)
 cpDropdown.Size = UDim2.new(1, -10, 0, 30)
 cpDropdown.Position = UDim2.new(0, 5, 0, 40)
@@ -228,10 +292,9 @@ cpDropdown.TextColor3 = Color3.new(1, 1, 1)
 local cpDropdownCorner = Instance.new("UICorner", cpDropdown)
 cpDropdownCorner.CornerRadius = UDim.new(0, 4)
 
--- Fixed: CP List Frame positioning và parenting
-local cpListFrame = Instance.new("ScrollingFrame", gui) -- Đặt trong gui để tránh bị che
+local cpListFrame = Instance.new("ScrollingFrame", gui)
 cpListFrame.Size = UDim2.new(0, 280, 0, 150)
-cpListFrame.Position = UDim2.new(0, main.Position.X.Offset + 10, 0, main.Position.Y.Offset + 115)
+cpListFrame.Position = UDim2.new(0, main.AbsolutePosition.X + 10, 0, main.AbsolutePosition.Y + 115)
 cpListFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 cpListFrame.BorderSizePixel = 1
 cpListFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
@@ -246,7 +309,6 @@ cpListCorner.CornerRadius = UDim.new(0, 4)
 local cpListLayout = Instance.new("UIListLayout", cpListFrame)
 cpListLayout.Padding = UDim.new(0, 2)
 
--- Update canvas size when adding/removing checkpoints
 local function updateCanvasSize()
     cpListLayout.Changed:Connect(function()
         cpListFrame.CanvasSize = UDim2.new(0, 0, 0, cpListLayout.AbsoluteContentSize.Y + 10)
@@ -304,13 +366,11 @@ end
 local function deleteCurrentCP()
     if #cp > 0 and currentCPIndex <= #cp then
         table.remove(cp, currentCPIndex)
-        -- Clear and recreate all buttons
         for _, child in pairs(cpListFrame:GetChildren()) do
             if child:IsA("TextButton") then
                 child:Destroy()
             end
         end
-        -- Recreate buttons with updated indices
         for i, checkpoint in ipairs(cp) do
             createCPButton(i, checkpoint)
         end
@@ -328,13 +388,11 @@ end
 cpDropdown.MouseButton1Click:Connect(function()
     if #cp > 0 then
         cpListFrame.Visible = not cpListFrame.Visible
-        -- Update position relative to main frame
         local mainPos = main.AbsolutePosition
         cpListFrame.Position = UDim2.new(0, mainPos.X + 10, 0, mainPos.Y + 115)
     end
 end)
 
--- Close dropdown when clicking outside
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         local mousePos = UserInputService:GetMouseLocation()
@@ -366,11 +424,9 @@ local function serverHop()
             local randomServer = availableServers[math.random(1, #availableServers)]
             TeleportService:TeleportToPlaceInstance(gameId, randomServer)
         else
-            -- Fallback: Just teleport to game without specific server
             TeleportService:Teleport(gameId)
         end
     else
-        -- If HTTP request fails, use basic teleport
         TeleportService:Teleport(gameId)
     end
 end
@@ -387,10 +443,9 @@ local function toggleFloat(active)
     
     if active then
         floatBodyVelocity = Instance.new("BodyVelocity", hrp)
-        floatBodyVelocity.Velocity = Vector3.new(0, 14, 0) -- Float upward at 14 studs/sec
+        floatBodyVelocity.Velocity = Vector3.new(0, 14, 0)
         floatBodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
         
-        -- Keep floating
         spawn(function()
             while floatActive and floatBodyVelocity and player.Character do
                 if floatBodyVelocity then
@@ -407,7 +462,7 @@ local function toggleFloat(active)
     end
 end
 
--- === Auto Steal with Lower Height ===
+-- === Auto Steal ===
 local function flyToPosition(targetCFrame)
     if not player.Character then return end
     local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
@@ -428,7 +483,6 @@ local function flyToPosition(targetCFrame)
         local direction = (targetCFrame.Position - hrp.Position).Unit
         bodyVelocity.Velocity = direction * flySpeed
 
-        -- Lower flying height adjustment
         local ray = workspace:Raycast(hrp.Position, Vector3.new(0, -0.5, 0))
         
         if ray then
@@ -471,11 +525,9 @@ local function improvedNoClip()
                     end
                 end
                 
-                -- Keep HumanoidRootPart collision enabled to avoid anti-cheat detection
                 local hrp = player.Character:FindFirstChild("HumanoidRootPart")
                 if hrp then
                     hrp.CanCollide = false
-                    -- Re-enable briefly to avoid detection
                     wait(0.01)
                     if hrp then
                         hrp.CanCollide = true
@@ -485,6 +537,39 @@ local function improvedNoClip()
         end)
     end
 end
+
+-- === Anti-Kick/Ban Protection ===
+local antiKickActive = true
+
+local function setupAntiKick()
+    -- Prevent remote event kicks
+    for _, v in pairs(getgc(true)) do
+        if typeof(v) == "table" and rawget(v, "FireServer") then
+            local oldFireServer = v.FireServer
+            rawset(v, "FireServer", function(_, ...)
+                if antiKickActive then
+                    return nil
+                else
+                    return oldFireServer(_, ...)
+                end
+            end)
+        end
+    end
+    
+    -- Hook core kick function
+    local oldKick = player.Kick
+    player.Kick = function(_, reason)
+        if antiKickActive then
+            warn("Anti-Kick: Prevented kick with reason:", reason)
+            return nil
+        else
+            return oldKick(_, reason)
+        end
+    end
+end
+
+-- Try to set up anti-kick (may not work in all games)
+pcall(setupAntiKick)
 
 -- === Create Buttons ===
 local function createButton(name, posY, callback, isToggle, parent)
@@ -612,24 +697,51 @@ langToggleCorner.CornerRadius = UDim.new(0, 4)
 
 langToggle.MouseButton1Click:Connect(function()
     lang = (lang == "vi") and "en" or "vi"
-    langLabel.Text = texts[lang].Language..": "..string.upper(lang)
-    -- Update all text elements
-    title.Text = texts[lang].Title
-    -- Add more text updates as needed
+    updateLanguage()
 end)
 
--- GUI Toggle Function
+-- GUI Toggle Functions
 local function toggleGUI()
     isGUIMaximized = not isGUIMaximized
     local targetSize = isGUIMaximized and maximizedGUISize or originalGUISize
     local tween = TweenService:Create(main, TweenInfo.new(0.3), {Size = targetSize})
     tween:Play()
-    toggleButton.Text = isGUIMaximized and "+" or "-"
 end
 
-toggleButton.MouseButton1Click:Connect(toggleGUI)
+local function minimizeGUI()
+    isGUIMinimized = true
+    content.Visible = false
+    main.Size = minimizedGUISize
+    minimizeButton.Visible = false
+    maximizeButton.Visible = true
+    closeButton.Position = UDim2.new(1, -30, 0, 2)
+end
 
--- GUI Dragging (Improved)
+local function maximizeGUI()
+    isGUIMinimized = false
+    content.Visible = true
+    main.Size = isGUIMaximized and maximizedGUISize or originalGUISize
+    minimizeButton.Visible = true
+    maximizeButton.Visible = false
+    closeButton.Position = UDim2.new(1, -30, 0, 2)
+end
+
+minimizeButton.MouseButton1Click:Connect(minimizeGUI)
+maximizeButton.MouseButton1Click:Connect(maximizeGUI)
+closeButton.MouseButton1Click:Connect(function()
+    minimizeGUI()
+    wait(0.1)
+    gui:Destroy()
+end)
+
+-- F1 Toggle for GUI
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.F1 then
+        main.Visible = not main.Visible
+    end
+end)
+
+-- GUI Dragging
 local dragging = false
 local dragInput
 local dragStart
@@ -639,7 +751,6 @@ local function update(input)
     local delta = input.Position - dragStart
     main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     
-    -- Update CP list position if visible
     if cpListFrame.Visible then
         local mainPos = main.AbsolutePosition
         cpListFrame.Position = UDim2.new(0, mainPos.X + 10, 0, mainPos.Y + 115)
@@ -679,13 +790,11 @@ player.CharacterAdded:Connect(function()
         player.Character.Humanoid.WalkSpeed = walkSpeed
     end
     
-    -- Reset float if active
     if floatActive then
         floatActive = false
         floatBodyVelocity = nil
     end
     
-    -- Reset noclip connection
     if noClipConnection then
         noClipConnection:Disconnect()
         noClipConnection = nil
@@ -694,8 +803,8 @@ end)
 
 -- Initialize
 updateCPDropdown()
+updateLanguage()
 
--- Auto-apply speed when character loads
 if player.Character and player.Character:FindFirstChild("Humanoid") then
     player.Character.Humanoid.WalkSpeed = walkSpeed
 end
