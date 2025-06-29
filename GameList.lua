@@ -7,5 +7,5 @@ local Games = {
   [72907489978215] = "https://raw.githubusercontent.com/AhmadV99/Script-Games/main/Fisch.lua", -- 2 Sea Fisch
   [126884695634066] = "https://raw.githubusercontent.com/AhmadV99/Script-Games/refs/heads/main/Grow%20a%20Garden.lua", -- Grow a Garden
   [91867617264223] = "https://raw.githubusercontent.com/AhmadV99/Script-Games/refs/heads/main/Grow%20a%20Garden.lua", -- Grow a Garden 1
-]
+}
   return Games
