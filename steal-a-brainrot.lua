@@ -87,8 +87,8 @@ local activeFeatures = {}
 local gameId = 109983668079237
 
 -- GUI Size Settings
-local originalGUISize = UDim2.new(0, 300, 0, 290)
-local maximizedGUISize = UDim2.new(0, 400, 0, 420)
+local originalGUISize = UDim2.new(0, 220, 0, 230)
+local maximizedGUISize = UDim2.new(0, 350, 0, 320)
 local minimizedGUISize = UDim2.new(0, 150, 0, 30)
 
 -- === Main GUI ===
