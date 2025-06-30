@@ -45,7 +45,7 @@ local texts = {
         MaximizeGUI = "Phóng to GUI",
         ESPPlayer = "ESP Người chơi",
         ESPBase = "ESP Base",
-        AntiKick = "Chống Kick",
+        AntiKick = "Chống Kick [Không hỗ trợ cho executors thấp]",
         EnterJobID = "Nhập Job ID:",
         JoinJob = "Vào Job"
     },
@@ -78,7 +78,7 @@ local texts = {
         MaximizeGUI = "Maximize GUI",
         ESPPlayer = "ESP Players",
         ESPBase = "ESP Bases",
-        AntiKick = "Anti-Kick",
+        AntiKick = "Anti-Kick [No support for low executors]",
         EnterJobID = "Enter Job ID:",
         JoinJob = "Join Job"
     }
