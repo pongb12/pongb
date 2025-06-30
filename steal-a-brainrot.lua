@@ -427,7 +427,7 @@ end)
 -- === Server Hopping Function ===
 local function serverHop()
     local success, servers = pcall(function()
-        return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..gameId.."/servers/Public?sortOrder=Asc&limit=100"))
+        return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..gameId.."/servers/Public?sortOrder=Asc&limit=8"))
     end)
     
     if success and servers.data then
@@ -495,7 +495,7 @@ local function flyToPosition(targetCFrame)
     local startTime = tick()
     local distance = (hrp.Position - targetCFrame.Position).Magnitude
 
-    while autoStealActive and (tick() - startTime < distance / flySpeed * 1.7) do
+    while autoStealActive and (tick() - startTime < distance / flySpeed * 1.5) do
         if not player.Character or not hrp or not bodyVelocity then break end
 
         local direction = (targetCFrame.Position - hrp.Position).Unit
