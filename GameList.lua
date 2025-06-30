@@ -1,6 +1,5 @@
 local Games = {
   [109983668079237] = "https://raw.githubusercontent.com/pongb12/pongb/refs/heads/main/steal-a-brainrot.lua", --Steal a Brainrot
-  [109983668079237] = "https://raw.githubusercontent.com/pongb12/pongb/refs/heads/main/F1simulator.lua", --Steal a Brainrot F1
   [2753915549] = "https://raw.githubusercontent.com/AhmadV99/Script-Games/main/Blox%20Fruit.lua", -- Blox Fruit Sea 1
   [4442272183] = "https://raw.githubusercontent.com/AhmadV99/Script-Games/main/Blox%20Fruit.lua", -- Blox Fruit Sea 2
   [7449423635] = "https://raw.githubusercontent.com/AhmadV99/Script-Games/main/Blox%20Fruit.lua", -- Blox Fruit Sea 3  
