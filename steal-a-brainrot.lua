@@ -1037,15 +1037,6 @@ player.CharacterAdded:Connect(function()
     end
 end)
 
--- Initialize
-updateCPDropdown()
-updateLanguage()
-
-if player.Character and player.Character:FindFirstChild("Humanoid") then
-    player.Character.Humanoid.WalkSpeed = walkSpeed
-end
-
-
 -- === Tạo GUI tròn nhỏ ===
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
@@ -1150,4 +1141,13 @@ task.spawn(function()
 		print("Circle GUI name changed to:", newName)
 	end
 end)
+
+
+-- Initialize
+updateCPDropdown()
+updateLanguage()
+
+if player.Character and player.Character:FindFirstChild("Humanoid") then
+    player.Character.Humanoid.WalkSpeed = walkSpeed
+end
 
