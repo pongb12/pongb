@@ -1,18 +1,18 @@
--- GUI + Anti-Kick + Anti-Ragdoll (Fix nút ON/OFF + Print)
+-- 📛 GUI TỔNG CHỐNG KICK & RAGDOLL AN TOÀN
 local lp = game:GetService("Players").LocalPlayer
 local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
 gui.Name = "AntiGUI_" .. math.random(1000, 9999)
 gui.ResetOnSpawn = false
 
--- Đổi tên GUI mỗi 15s
+-- 🔁 Đổi tên GUI mỗi 15s
 task.spawn(function()
 	while true do
-		wait(15)
+		task.wait(15)
 		gui.Name = "AntiGUI_" .. math.random(1000, 9999)
 	end
 end)
 
--- Frame
+-- 🖼️ GUI frame
 local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0, 220, 0, 100)
 frame.Position = UDim2.new(0.05, 0, 0.4, 0)
@@ -21,7 +21,7 @@ frame.BorderSizePixel = 0
 frame.Active = true
 frame.Draggable = true
 
--- Nút bật tắt Anti-Ragdoll
+-- 🔘 Toggle Anti-Ragdoll
 local toggle = Instance.new("TextButton", frame)
 toggle.Size = UDim2.new(0.7, -10, 0, 40)
 toggle.Position = UDim2.new(0, 5, 0, 5)
@@ -31,7 +31,7 @@ toggle.TextColor3 = Color3.new(1, 1, 1)
 toggle.Font = Enum.Font.SourceSansBold
 toggle.TextSize = 16
 
--- Nút X
+-- ❌ Nút X
 local close = Instance.new("TextButton", frame)
 close.Size = UDim2.new(0.3, -10, 0, 40)
 close.Position = UDim2.new(0.7, 5, 0, 5)
@@ -41,7 +41,7 @@ close.TextColor3 = Color3.new(1, 1, 1)
 close.Font = Enum.Font.SourceSansBold
 close.TextSize = 20
 
--- Label trạng thái
+-- Label
 local label = Instance.new("TextLabel", frame)
 label.Size = UDim2.new(1, -10, 0, 20)
 label.Position = UDim2.new(0, 5, 0, 50)
@@ -51,12 +51,12 @@ label.TextColor3 = Color3.new(1, 1, 1)
 label.Font = Enum.Font.SourceSans
 label.TextSize = 14
 
--- Xóa GUI
+-- 🧼 Đóng GUI
 close.MouseButton1Click:Connect(function()
 	gui:Destroy()
 end)
 
--- 🛡️ Anti-Kick tổng hợp (BAC-safe)
+-- ✅ ANTI-KICK nâng cao (chống BAC remote)
 local mt = getrawmetatable(game)
 setreadonly(mt, false)
 local oldNamecall = mt.__namecall
@@ -64,28 +64,32 @@ local oldNamecall = mt.__namecall
 mt.__namecall = newcclosure(function(self, ...)
 	local method = getnamecallmethod()
 	local args = {...}
+
 	if tostring(self) == tostring(lp) and method == "Kick" then
 		warn("[AntiKick] Kick blocked")
 		return nil
 	end
+
 	if tostring(self) == tostring(lp) and method == "Destroy" then
 		warn("[AntiKick] Destroy blocked")
 		return nil
 	end
+
 	if (method == "FireServer" or method == "InvokeServer") then
 		local name = tostring(self):lower()
-		if name:find("kick") or name:find("ban") or name:find("remove") or name:find("bac") then
-			warn("[AntiKick] Suspicious Remote blocked:", name)
+		if name:find("kick") or name:find("ban") or name:find("bac") or name:find("log") or name:find("report") then
+			warn("[AntiKick] Suspicious Remote blocked: ", name)
 			return nil
 		end
 	end
+
 	return oldNamecall(self, unpack(args))
 end)
 
--- Hook Kick trực tiếp
-lp.Kick = function(...) warn("[AntiKick] Direct Kick blocked") end
+-- Chặn direct player:Kick()
+lp.Kick = function() warn("[AntiKick] player:Kick blocked") end
 
--- BindToClose
+-- Chặn BindToClose
 pcall(function()
 	game:BindToClose(function()
 		warn("[AntiKick] BindToClose blocked")
@@ -94,18 +98,19 @@ pcall(function()
 end)
 setreadonly(mt, true)
 
--- ✅ Anti-Ragdoll an toàn (không phá Constraint)
+-- ✅ ANTI-RAGDOLL AN TOÀN
 local antiEnabled = false
-local thread
+local ragdollConnection = nil
 
-local function preventRagdoll(char)
-	local hum = char:FindFirstChildOfClass("Humanoid")
+local function applyAntiRagdoll(char)
+	local hum = char:WaitForChild("Humanoid", 3)
 	if not hum then return end
 
-	thread = game:GetService("RunService").Heartbeat:Connect(function()
+	if ragdollConnection then ragdollConnection:Disconnect() end
+	ragdollConnection = game:GetService("RunService").Heartbeat:Connect(function()
 		if hum.PlatformStand then
 			hum.PlatformStand = false
-			warn("[SafeAntiRagdoll] Blocked PlatformStand")
+			warn("[SafeRagdoll] PlatformStand blocked")
 		end
 		for _, part in ipairs(char:GetDescendants()) do
 			if part:IsA("BasePart") and part.Anchored then
@@ -115,32 +120,35 @@ local function preventRagdoll(char)
 	end)
 end
 
-local function startSafeRagdoll()
-	if thread then thread:Disconnect() end
+local function activateAntiRagdoll()
 	local char = lp.Character or lp.CharacterAdded:Wait()
-	preventRagdoll(char)
-	lp.CharacterAdded:Connect(preventRagdoll)
+	applyAntiRagdoll(char)
+	lp.CharacterAdded:Connect(function(c)
+		if antiEnabled then
+			wait(1)
+			applyAntiRagdoll(c)
+		end
+	end)
 end
 
--- 🔘 Nút bật / tắt Anti-Ragdoll + print "hi"
 toggle.MouseButton1Click:Connect(function()
 	antiEnabled = not antiEnabled
 	toggle.Text = "Anti-Ragdoll: " .. (antiEnabled and "ON" or "OFF")
-	print("hi") -- in ra mỗi khi bật/tắt để xác nhận
+	print("hi")
 	if antiEnabled then
-		startSafeRagdoll()
+		activateAntiRagdoll()
 	else
-		if thread then thread:Disconnect() thread = nil end
+		if ragdollConnection then ragdollConnection:Disconnect() ragdollConnection = nil end
 	end
 end)
 
--- Hook require để ngăn module anti-cheat
+-- ✅ Hook require để chặn module đáng ngờ
 local oldRequire = require
 require = function(mod)
 	if typeof(mod) == "Instance" and mod:IsA("ModuleScript") then
 		local name = mod.Name:lower()
-		if name:find("anti") or name:find("bac") or name:find("ban") then
-			warn("[AntiKick] Blocked suspicious module:", name)
+		if name:find("anti") or name:find("bac") or name:find("ban") or name:find("kick") then
+			warn("[AntiKick] Blocked suspicious module: " .. name)
 			return function() end
 		end
 	end
