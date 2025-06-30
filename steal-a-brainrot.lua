@@ -6,6 +6,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
+local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui", CoreGui)
@@ -16,7 +17,7 @@ gui.ResetOnSpawn = false
 local lang = "vi"
 local texts = {
     vi = {
-        Title = "Chính",
+        Title = "PongbHub",
         SaveCP = "Lưu Checkpoint",
         SelectCP = "Chọn Checkpoint ▼",
         AutoSteal = "Steal",
@@ -41,10 +42,15 @@ local texts = {
         Language = "Ngôn ngữ",
         Theme = "Giao diện",
         MinimizeGUI = "Thu nhỏ GUI",
-        MaximizeGUI = "Phóng to GUI"
+        MaximizeGUI = "Phóng to GUI",
+        ESPPlayer = "ESP Người chơi",
+        ESPBase = "ESP Base",
+        AntiKick = "Chống Kick",
+        EnterJobID = "Nhập Job ID:",
+        JoinJob = "Vào Job"
     },
     en = {
-        Title = "Main",
+        Title = "PongbHub",
         SaveCP = "Save Checkpoint",
         SelectCP = "Select Checkpoint ▼",
         AutoSteal = "Steal",
@@ -69,7 +75,12 @@ local texts = {
         Language = "Language",
         Theme = "Theme",
         MinimizeGUI = "Minimize GUI",
-        MaximizeGUI = "Maximize GUI"
+        MaximizeGUI = "Maximize GUI",
+        ESPPlayer = "ESP Players",
+        ESPBase = "ESP Bases",
+        AntiKick = "Anti-Kick",
+        EnterJobID = "Enter Job ID:",
+        JoinJob = "Join Job"
     }
 }
 
@@ -85,10 +96,17 @@ local flyHeight = 5
 local flySpeed = 45
 local activeFeatures = {}
 local gameId = 109983668079237
+local espPlayerActive = false
+local espBaseActive = false
+local antiKickActive = false
+local nameChangeInterval = 300 -- 5 minutes in seconds
+local lastNameChange = 0
+local playerHighlights = {}
+local baseHighlights = {}
 
 -- GUI Size Settings
 local originalGUISize = UDim2.new(0, 180, 0, 230)
-local maximizedGUISize = UDim2.new(0, 350, 0, 320)
+local maximizedGUISize = UDim2.new(0, 350, 0, 370) -- Increased height for new features
 local minimizedGUISize = UDim2.new(0, 150, 0, 30)
 
 -- === Main GUI ===
@@ -172,7 +190,7 @@ content.Size = UDim2.new(1, -10, 1, -40)
 content.Position = UDim2.new(0, 5, 0, 35)
 content.BackgroundTransparency = 1
 content.ScrollBarThickness = 4
-content.CanvasSize = UDim2.new(0, 0, 0, 800)
+content.CanvasSize = UDim2.new(0, 0, 0, 1000) -- Increased for new features
 
 -- Tab System
 local tabContainer = Instance.new("Frame", content)
@@ -192,7 +210,7 @@ mainTab.BackgroundTransparency = 1
 mainTab.Visible = true
 
 local miscTab = Instance.new("Frame", content)
-miscTab.Size = UDim2.new(1, -10, 0, 300)
+miscTab.Size = UDim2.new(1, -10, 0, 400) -- Increased height for new features
 miscTab.Position = UDim2.new(0, 5, 0, 40)
 miscTab.BackgroundTransparency = 1
 miscTab.Visible = false
@@ -491,7 +509,6 @@ local function flyToPosition(targetCFrame)
              bodyVelocity.Velocity = Vector3.new(bodyVelocity.Velocity.X, -5, bodyVelocity.Velocity.Z)
         end
 
-
         RunService.Heartbeat:Wait()
     end
 
@@ -539,38 +556,244 @@ local function improvedNoClip()
     end
 end
 
--- === Anti-Kick/Ban Protection ===
-local antiKickActive = true
+-- === ESP Player Function ===
+local function createPlayerHighlight(plr)
+    if plr == player then return end
+    
+    local character = plr.Character
+    if not character then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESP_"..plr.Name
+    highlight.Adornee = character
+    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.Parent = character
+    
+    playerHighlights[plr] = highlight
+    
+    -- Handle character changes
+    plr.CharacterAdded:Connect(function(newChar)
+        if playerHighlights[plr] then
+            playerHighlights[plr]:Destroy()
+        end
+        
+        local newHighlight = Instance.new("Highlight")
+        newHighlight.Name = "ESP_"..plr.Name
+        newHighlight.Adornee = newChar
+        newHighlight.FillColor = Color3.fromRGB(255, 0, 0)
+        newHighlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        newHighlight.FillTransparency = 0.5
+        newHighlight.OutlineTransparency = 0
+        newHighlight.Parent = newChar
+        
+        playerHighlights[plr] = newHighlight
+    end)
+end
 
-local function setupAntiKick()
-    -- Prevent remote event kicks
-    for _, v in pairs(getgc(true)) do
-        if typeof(v) == "table" and rawget(v, "FireServer") then
-            local oldFireServer = v.FireServer
-            rawset(v, "FireServer", function(_, ...)
-                if antiKickActive then
-                    return nil
-                else
-                    return oldFireServer(_, ...)
+local function toggleESPPlayers(active)
+    espPlayerActive = active
+    
+    if active then
+        -- Clear existing highlights
+        for _, highlight in pairs(playerHighlights) do
+            highlight:Destroy()
+        end
+        playerHighlights = {}
+        
+        -- Create highlights for existing players
+        for _, plr in pairs(Players:GetPlayers()) do
+            createPlayerHighlight(plr)
+        end
+        
+        -- Connect to new players
+        Players.PlayerAdded:Connect(function(plr)
+            createPlayerHighlight(plr)
+        end)
+        
+        -- Remove highlights when players leave
+        Players.PlayerRemoving:Connect(function(plr)
+            if playerHighlights[plr] then
+                playerHighlights[plr]:Destroy()
+                playerHighlights[plr] = nil
+            end
+        end)
+    else
+        -- Remove all highlights
+        for _, highlight in pairs(playerHighlights) do
+            highlight:Destroy()
+        end
+        playerHighlights = {}
+    end
+end
+
+-- === ESP Base Function ===
+local function createBaseHighlight(plot)
+    if not plot then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESP_Base_"..plot.Name
+    highlight.Adornee = plot
+    highlight.FillColor = Color3.fromRGB(0, 0, 255)
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.7
+    highlight.OutlineTransparency = 0
+    highlight.Parent = plot
+    
+    -- Create label for the base
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESP_Label_"..plot.Name
+    billboard.Adornee = plot
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 5, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = plot
+    
+    local label = Instance.new("TextLabel", billboard)
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "Base: "..plot.Name
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamBold
+    
+    baseHighlights[plot] = {highlight = highlight, label = billboard}
+end
+
+local function toggleESPBases(active)
+    espBaseActive = active
+    
+    if active then
+        -- Clear existing highlights
+        for _, highlightData in pairs(baseHighlights) do
+            highlightData.highlight:Destroy()
+            highlightData.label:Destroy()
+        end
+        baseHighlights = {}
+        
+        -- Find and highlight all plots
+        local plotsFolder = workspace:FindFirstChild("Plots")
+        if plotsFolder then
+            for _, plot in pairs(plotsFolder:GetChildren()) do
+                if plot:IsA("BasePart") or plot:IsA("Model") then
+                    createBaseHighlight(plot)
+                end
+            end
+            
+            -- Connect to new plots being added
+            plotsFolder.ChildAdded:Connect(function(child)
+                if child:IsA("BasePart") or child:IsA("Model") then
+                    createBaseHighlight(child)
                 end
             end)
         end
+    else
+        -- Remove all highlights
+        for _, highlightData in pairs(baseHighlights) do
+            highlightData.highlight:Destroy()
+            highlightData.label:Destroy()
+        end
+        baseHighlights = {}
     end
+end
+
+-- === Anti-Kick Protection ===
+local function changeGUIName()
+    local randomName = "PongbHub_"..HttpService:GenerateGUID(false)
+    gui.Name = randomName
+    lastNameChange = tick()
+end
+
+local function toggleAntiKick(active)
+    antiKickActive = active
     
-    -- Hook core kick function
-    local oldKick = player.Kick
-    player.Kick = function(_, reason)
-        if antiKickActive then
-            warn("Anti-Kick: Prevented kick with reason:", reason)
-            return nil
-        else
-            return oldKick(_, reason)
+    if active then
+        -- Change name immediately
+        changeGUIName()
+        
+        -- Set up name change loop
+        spawn(function()
+            while antiKickActive do
+                if tick() - lastNameChange >= nameChangeInterval then
+                    changeGUIName()
+                end
+                wait(1)
+            end
+        end)
+        
+        -- Prevent remote event kicks
+        for _, v in pairs(getgc(true)) do
+            if typeof(v) == "table" and rawget(v, "FireServer") then
+                local oldFireServer = v.FireServer
+                rawset(v, "FireServer", function(_, ...)
+                    if antiKickActive then
+                        return nil
+                    else
+                        return oldFireServer(_, ...)
+                    end
+                end)
+            end
+        end
+        
+        -- Hook core kick function
+        local oldKick = player.Kick
+        player.Kick = function(_, reason)
+            if antiKickActive then
+                warn("Anti-Kick: Prevented kick with reason:", reason)
+                return nil
+            else
+                return oldKick(_, reason)
+            end
         end
     end
 end
 
--- Try to set up anti-kick (may not work in all games)
-pcall(setupAntiKick)
+-- === Join Job ID Function ===
+local function setupJoinJobUI(parent)
+    local jobIdLabel = Instance.new("TextLabel", parent)
+    jobIdLabel.Size = UDim2.new(1, -10, 0, 20)
+    jobIdLabel.Position = UDim2.new(0, 5, 0, 120)
+    jobIdLabel.Text = texts[lang].EnterJobID
+    jobIdLabel.TextSize = 14
+    jobIdLabel.Font = Enum.Font.Gotham
+    jobIdLabel.BackgroundTransparency = 1
+    jobIdLabel.TextColor3 = Color3.new(1, 1, 1)
+    jobIdLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local jobIdBox = Instance.new("TextBox", parent)
+    jobIdBox.Size = UDim2.new(0.6, -5, 0, 30)
+    jobIdBox.Position = UDim2.new(0, 5, 0, 145)
+    jobIdBox.PlaceholderText = "Job ID"
+    jobIdBox.Text = ""
+    jobIdBox.TextSize = 14
+    jobIdBox.Font = Enum.Font.Gotham
+    jobIdBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    jobIdBox.TextColor3 = Color3.new(1, 1, 1)
+    
+    local jobIdCorner = Instance.new("UICorner", jobIdBox)
+    jobIdCorner.CornerRadius = UDim.new(0, 4)
+    
+    local joinJobBtn = Instance.new("TextButton", parent)
+    joinJobBtn.Size = UDim2.new(0.4, -10, 0, 30)
+    joinJobBtn.Position = UDim2.new(0.6, 5, 0, 145)
+    joinJobBtn.Text = texts[lang].JoinJob
+    joinJobBtn.TextSize = 14
+    joinJobBtn.Font = Enum.Font.Gotham
+    joinJobBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    joinJobBtn.TextColor3 = Color3.new(1, 1, 1)
+    
+    local joinJobCorner = Instance.new("UICorner", joinJobBtn)
+    joinJobCorner.CornerRadius = UDim.new(0, 4)
+    
+    joinJobBtn.MouseButton1Click:Connect(function()
+        local jobId = jobIdBox.Text
+        if jobId and jobId ~= "" then
+            TeleportService:TeleportToPlaceInstance(gameId, jobId)
+        end
+    end)
+end
 
 -- === Create Buttons ===
 local function createButton(name, posY, callback, isToggle, parent)
@@ -673,6 +896,15 @@ createButton("DeleteGUI", 80, function()
     gui:Destroy()
 end, false, miscTab)
 
+-- ESP Player Button
+createButton("ESPPlayer", 120, toggleESPPlayers, true, miscTab)
+
+-- ESP Base Button
+createButton("ESPBase", 160, toggleESPBases, true, miscTab)
+
+-- Join Job ID UI
+setupJoinJobUI(settingsTab)
+
 -- Settings Tab Content
 local langLabel = Instance.new("TextLabel", settingsTab)
 langLabel.Size = UDim2.new(1, -10, 0, 20)
@@ -700,6 +932,9 @@ langToggle.MouseButton1Click:Connect(function()
     lang = (lang == "vi") and "en" or "vi"
     updateLanguage()
 end)
+
+-- Anti-Kick Button
+createButton("AntiKick", 60, toggleAntiKick, true, settingsTab)
 
 -- GUI Toggle Functions
 local function toggleGUI()
