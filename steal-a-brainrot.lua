@@ -16,7 +16,7 @@ gui.ResetOnSpawn = false
 local lang = "vi"
 local texts = {
     vi = {
-        Title = "PongbHub",
+        Title = "Chính",
         SaveCP = "Lưu Checkpoint",
         SelectCP = "Chọn Checkpoint ▼",
         AutoSteal = "Steal",
@@ -44,7 +44,7 @@ local texts = {
         MaximizeGUI = "Phóng to GUI"
     },
     en = {
-        Title = "PongbHub",
+        Title = "Main",
         SaveCP = "Save Checkpoint",
         SelectCP = "Select Checkpoint ▼",
         AutoSteal = "Steal",
