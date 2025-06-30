@@ -1044,3 +1044,110 @@ updateLanguage()
 if player.Character and player.Character:FindFirstChild("Humanoid") then
     player.Character.Humanoid.WalkSpeed = walkSpeed
 end
+
+
+-- === Tạo GUI tròn nhỏ ===
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "CircleGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Nút hình tròn
+local circleButton = Instance.new("TextButton")
+circleButton.Size = UDim2.new(0, 60, 0, 60)
+circleButton.Position = UDim2.new(0, 100, 0, 100)
+circleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+circleButton.Text = "F1"
+circleButton.TextColor3 = Color3.new(1,1,1)
+circleButton.Font = Enum.Font.GothamBold
+circleButton.TextScaled = true
+circleButton.BorderSizePixel = 0
+circleButton.Parent = screenGui
+
+local uicorner = Instance.new("UICorner", circleButton)
+uicorner.CornerRadius = UDim.new(1, 0)
+
+-- Nút X
+local closeButton = Instance.new("TextButton", circleButton)
+closeButton.Size = UDim2.new(0, 20, 0, 20)
+closeButton.Position = UDim2.new(1, -15, 0, -5)
+closeButton.AnchorPoint = Vector2.new(1, 0)
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.new(1,1,1)
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextScaled = true
+closeButton.BorderSizePixel = 0
+
+local uicorner2 = Instance.new("UICorner", closeButton)
+uicorner2.CornerRadius = UDim.new(0.5, 0)
+
+-- Xóa GUI khi bấm X
+closeButton.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+    if gui then gui:Destroy() end -- xóa luôn GUI lớn nếu tồn tại
+end)
+
+-- Ẩn/hiện GUI chính khi bấm nút tròn
+circleButton.MouseButton1Click:Connect(function()
+    if gui then
+        gui.Enabled = not gui.Enabled
+    end
+end)
+
+-- Kéo GUI
+local dragging = false
+local dragInput, mousePos, framePos
+
+circleButton.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		mousePos = input.Position
+		framePos = circleButton.Position
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+circleButton.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - mousePos
+		circleButton.Position = UDim2.new(
+			framePos.X.Scale,
+			framePos.X.Offset + delta.X,
+			framePos.Y.Scale,
+			framePos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+-- Đổi tên GUI 2 phút/lần
+local randomNames = {
+    "ControllerUI", "HelperPanel", "DebugMode", "SystemOverlay",
+    "AccessPoint", "HiddenUI", "ToolModule", "Circle", "QuickMenu", "BubbleCore"
+}
+
+task.spawn(function()
+	while screenGui and screenGui.Parent do
+		task.wait(120)
+		local newName = randomNames[math.random(1, #randomNames)]
+		screenGui.Name = newName
+		print("Circle GUI name changed to:", newName)
+	end
+end)
+
