@@ -10,7 +10,7 @@ local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui", CoreGui)
-gui.Name = "PongbHub_"..HttpService:GenerateGUID(false)
+gui.Name = "PlayerGui_"..HttpService:GenerateGUID(false)
 gui.ResetOnSpawn = false
 
 -- === Language Settings ===
@@ -18,19 +18,19 @@ local lang = "vi"
 local texts = {
     vi = {
         Title = "PongbHub",
-        AutoSteal = "Steal",
+        AutoSteal = "Tự động Steal",
         Rejoin = "Vào lại server",
-        Hop = "Hop Server",
-        Join = "Join Job ID",
+        Hop = "Đổi server",
+        Join = "Vào Job ID",
         DeleteGUI = "Xoá GUI",
         WalkSpeed = "Tốc độ di chuyển",
-        NoClip = "Xuyên rào cản",
+        NoClip = "Xuyên tường",
         CurrentSpeed = "Tốc độ hiện tại: ",
         SetSpeed = "Áp dụng tốc độ",
-        SpeedUpdated = "Đã đặt tốc độ thành: ",
+        SpeedUpdated = "Đã đặt tốc độ: ",
         ActiveFeature = "TÍNH NĂNG ĐANG BẬT: ",
         AutoStealComplete = "Steal hoàn thành!",
-        Misc = "Tính năng khác",
+        Misc = "Khác",
         Settings = "Cài đặt",
         Language = "Ngôn ngữ",
         Theme = "Giao diện",
@@ -38,25 +38,28 @@ local texts = {
         MaximizeGUI = "Phóng to GUI",
         ESPPlayer = "ESP Người chơi",
         ESPBase = "ESP Base",
-        AntiKick = "Chống Kick [Không hỗ trợ cho executors thấp]",
+        AntiKick = "Chống Kick",
         EnterJobID = "Nhập Job ID:",
         JoinJob = "Vào Job",
         InfinityJump = "Nhảy vô hạn",
         StealButton = "STEAL",
         LockTime = "Thời gian khóa: ",
-        PlayerName = "Người chơi: "
+        PlayerName = "",
+        MyBase = "Base của bạn",
+        OtherBase = "Base khác",
+        NoDeliveryHitbox = "Không tìm thấy DeliveryHitbox của bạn!"
     },
     en = {
         Title = "PongbHub",
-        AutoSteal = "Steal",
+        AutoSteal = "Auto Steal",
         Rejoin = "Rejoin Server",
-        Hop = "Hop Server",
+        Hop = "Server Hop",
         Join = "Join Job ID",
         DeleteGUI = "Delete GUI",
         WalkSpeed = "Walk Speed",
         NoClip = "NoClip",
         CurrentSpeed = "Current speed: ",
-        SetSpeed = "Apply Speed",
+        SetSpeed = "Set Speed",
         SpeedUpdated = "Speed set to: ",
         ActiveFeature = "ACTIVE FEATURE: ",
         AutoStealComplete = "Steal complete!",
@@ -68,13 +71,16 @@ local texts = {
         MaximizeGUI = "Maximize GUI",
         ESPPlayer = "ESP Players",
         ESPBase = "ESP Bases",
-        AntiKick = "Anti-Kick [No support for low executors]",
+        AntiKick = "Anti-Kick",
         EnterJobID = "Enter Job ID:",
         JoinJob = "Join Job",
         InfinityJump = "Infinity Jump",
         StealButton = "STEAL",
         LockTime = "Lock time: ",
-        PlayerName = "Player: "
+        PlayerName = "",
+        MyBase = "Your Base",
+        OtherBase = "Other Base",
+        NoDeliveryHitbox = "Your DeliveryHitbox not found!"
     }
 }
 
@@ -95,6 +101,8 @@ local playerHighlights = {}
 local baseHighlights = {}
 local infinityJumpEnabled = false
 local isJumping = false
+local playerPlot = nil
+local playerDeliveryHitbox = nil
 
 -- GUI Size Settings
 local originalGUISize = UDim2.new(0, 180, 0, 230)
@@ -311,30 +319,33 @@ local function serverHop()
     end
 end
 
--- === Improved Auto Steal Function ===
-local function findNearestDeliveryHitbox()
+-- === Find Player Plot and Delivery Hitbox ===
+local function findPlayerPlot()
     local plotsFolder = workspace:FindFirstChild("Plots")
-    if not plotsFolder then return nil end
-    
-    local nearestHitbox = nil
-    local nearestDistance = math.huge
-    local character = player.Character
-    local hrp = character and character:FindFirstChild("HumanoidRootPart")
-    
-    if not hrp then return nil end
+    if not plotsFolder then return end
     
     for _, plot in pairs(plotsFolder:GetChildren()) do
-        local deliveryHitbox = plot:FindFirstChild("DeliveryHitbox")
-        if deliveryHitbox then
-            local distance = (hrp.Position - deliveryHitbox.Position).Magnitude
-            if distance < nearestDistance then
-                nearestDistance = distance
-                nearestHitbox = deliveryHitbox
+        local purchases = plot:FindFirstChild("Purchases")
+        if purchases then
+            for _, purchase in pairs(purchases:GetChildren()) do
+                if purchase:FindFirstChild("Owner") and purchase.Owner.Value == player then
+                    playerPlot = plot
+                    playerDeliveryHitbox = plot:FindFirstChild("DeliveryHitbox")
+                    return
+                end
             end
         end
     end
-    
-    return nearestHitbox
+end
+
+local function findPlayerDeliveryHitbox()
+    if playerDeliveryHitbox and playerDeliveryHitbox.Parent then
+        return playerDeliveryHitbox
+    else
+        -- Nếu không tìm thấy, thử tìm lại
+        findPlayerPlot()
+        return playerDeliveryHitbox
+    end
 end
 
 local function flyToPosition(targetPart)
@@ -404,13 +415,13 @@ stealButton.MouseButton1Click:Connect(function()
     autoStealActive = not autoStealActive
     if autoStealActive then
         stealButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-        local target = findNearestDeliveryHitbox()
+        local target = findPlayerDeliveryHitbox()
         if target then
             flyToPosition(target)
         else
             game.StarterGui:SetCore("SendNotification", {
                 Title = texts[lang].Title,
-                Text = "Không tìm thấy DeliveryHitbox!",
+                Text = texts[lang].NoDeliveryHitbox,
                 Duration = 2
             })
             autoStealActive = false
@@ -480,7 +491,7 @@ local function createPlayerHighlight(plr)
     local label = Instance.new("TextLabel", billboard)
     label.Size = UDim2.new(1, 0, 1, 0)
     label.BackgroundTransparency = 1
-    label.Text = texts[lang].PlayerName..plr.Name
+    label.Text = plr.Name -- Chỉ hiển thị tên
     label.TextColor3 = Color3.new(1, 1, 1)
     label.TextScaled = true
     label.Font = Enum.Font.GothamBold
@@ -514,7 +525,7 @@ local function createPlayerHighlight(plr)
         local newLabel = Instance.new("TextLabel", newBillboard)
         newLabel.Size = UDim2.new(1, 0, 1, 0)
         newLabel.BackgroundTransparency = 1
-        newLabel.Text = texts[lang].PlayerName..plr.Name
+        newLabel.Text = plr.Name
         newLabel.TextColor3 = Color3.new(1, 1, 1)
         newLabel.TextScaled = true
         newLabel.Font = Enum.Font.GothamBold
@@ -571,13 +582,28 @@ local function getLockTime(plot)
     return 0
 end
 
+local function getOwner(plot)
+    local purchases = plot:FindFirstChild("Purchases")
+    if purchases then
+        for _, purchase in pairs(purchases:GetChildren()) do
+            if purchase:FindFirstChild("Owner") then
+                return purchase.Owner.Value
+            end
+        end
+    end
+    return nil
+end
+
 local function createBaseHighlight(plot)
     if not plot then return end
+    
+    local owner = getOwner(plot)
+    local isPlayerPlot = owner == player
     
     local highlight = Instance.new("Highlight")
     highlight.Name = "ESP_Base_"..plot.Name
     highlight.Adornee = plot
-    highlight.FillColor = Color3.fromRGB(0, 0, 255)
+    highlight.FillColor = isPlayerPlot and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(0, 0, 255)
     highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
     highlight.FillTransparency = 0.7
     highlight.OutlineTransparency = 0
@@ -595,7 +621,7 @@ local function createBaseHighlight(plot)
     local label = Instance.new("TextLabel", billboard)
     label.Size = UDim2.new(1, 0, 1, 0)
     label.BackgroundTransparency = 1
-    label.Text = "Base: "..plot.Name.."\n"..texts[lang].LockTime..getLockTime(plot)
+    label.Text = (isPlayerPlot and texts[lang].MyBase or texts[lang].OtherBase).."\n"..texts[lang].LockTime..getLockTime(plot)
     label.TextColor3 = Color3.new(1, 1, 1)
     label.TextScaled = true
     label.Font = Enum.Font.GothamBold
@@ -607,7 +633,7 @@ local function createBaseHighlight(plot)
             updateConnection:Disconnect()
             return
         end
-        label.Text = "Base: "..plot.Name.."\n"..texts[lang].LockTime..getLockTime(plot)
+        label.Text = (isPlayerPlot and texts[lang].MyBase or texts[lang].OtherBase).."\n"..texts[lang].LockTime..getLockTime(plot)
     end)
     
     baseHighlights[plot] = {highlight = highlight, label = billboard, connection = updateConnection}
@@ -808,13 +834,13 @@ end
 createButton("AutoSteal", 0, function(active)
     autoStealActive = active
     if active then
-        local target = findNearestDeliveryHitbox()
+        local target = findPlayerDeliveryHitbox()
         if target then
             flyToPosition(target)
         else
             game.StarterGui:SetCore("SendNotification", {
                 Title = texts[lang].Title,
-                Text = "Không tìm thấy DeliveryHitbox!",
+                Text = texts[lang].NoDeliveryHitbox,
                 Duration = 2
             })
             autoStealActive = false
@@ -920,6 +946,7 @@ langToggleCorner.CornerRadius = UDim.new(0, 4)
 langToggle.MouseButton1Click:Connect(function()
     lang = (lang == "vi") and "en" or "vi"
     updateLanguage()
+    langLabel.Text = texts[lang].Language..": "..string.upper(lang)
     stealButton.Text = texts[lang].StealButton
 end)
 
@@ -1016,6 +1043,10 @@ player.CharacterAdded:Connect(function()
         noClipConnection:Disconnect()
         noClipConnection = nil
     end
+    
+    -- Tìm lại base khi respawn
+    wait(2) -- Đợi base load
+    findPlayerPlot()
 end)
 
 -- === Circle GUI ===
@@ -1119,3 +1150,6 @@ updateLanguage()
 if player.Character and player.Character:FindFirstChild("Humanoid") then
     player.Character.Humanoid.WalkSpeed = walkSpeed
 end
+
+-- Tìm base khi khởi động
+findPlayerPlot()
