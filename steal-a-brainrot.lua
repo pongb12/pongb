@@ -18,24 +18,17 @@ local lang = "vi"
 local texts = {
     vi = {
         Title = "PongbHub",
-        SaveCP = "Lưu Checkpoint",
-        SelectCP = "Chọn Checkpoint ▼",
         AutoSteal = "Steal",
-        Float = "Float",
         Rejoin = "Vào lại server",
         Hop = "Hop Server",
         Join = "Join Job ID",
         DeleteGUI = "Xoá GUI",
         WalkSpeed = "Tốc độ di chuyển",
         NoClip = "Xuyên rào cản",
-        CPSaved = "Đã lưu checkpoint!",
-        CPTeled = "Đã dịch chuyển đến checkpoint!",
         CurrentSpeed = "Tốc độ hiện tại: ",
         SetSpeed = "Áp dụng tốc độ",
         SpeedUpdated = "Đã đặt tốc độ thành: ",
         ActiveFeature = "TÍNH NĂNG ĐANG BẬT: ",
-        DeleteCP = "Xóa CP hiện tại",
-        CPList = "Danh sách CP:",
         AutoStealComplete = "Steal hoàn thành!",
         Misc = "Tính năng khác",
         Settings = "Cài đặt",
@@ -47,28 +40,25 @@ local texts = {
         ESPBase = "ESP Base",
         AntiKick = "Chống Kick [Không hỗ trợ cho executors thấp]",
         EnterJobID = "Nhập Job ID:",
-        JoinJob = "Vào Job"
+        JoinJob = "Vào Job",
+        InfinityJump = "Nhảy vô hạn",
+        StealButton = "STEAL",
+        LockTime = "Thời gian khóa: ",
+        PlayerName = "Người chơi: "
     },
     en = {
         Title = "PongbHub",
-        SaveCP = "Save Checkpoint",
-        SelectCP = "Select Checkpoint ▼",
         AutoSteal = "Steal",
-        Float = "Float",
         Rejoin = "Rejoin Server",
         Hop = "Hop Server",
         Join = "Join Job ID",
         DeleteGUI = "Delete GUI",
         WalkSpeed = "Walk Speed",
         NoClip = "NoClip",
-        CPSaved = "Checkpoint saved!",
-        CPTeled = "Teleported to checkpoint!",
         CurrentSpeed = "Current speed: ",
         SetSpeed = "Apply Speed",
         SpeedUpdated = "Speed set to: ",
         ActiveFeature = "ACTIVE FEATURE: ",
-        DeleteCP = "Delete Current CP",
-        CPList = "CP List:",
         AutoStealComplete = "Steal complete!",
         Misc = "Misc",
         Settings = "Settings",
@@ -80,39 +70,41 @@ local texts = {
         ESPBase = "ESP Bases",
         AntiKick = "Anti-Kick [No support for low executors]",
         EnterJobID = "Enter Job ID:",
-        JoinJob = "Join Job"
+        JoinJob = "Join Job",
+        InfinityJump = "Infinity Jump",
+        StealButton = "STEAL",
+        LockTime = "Lock time: ",
+        PlayerName = "Player: "
     }
 }
 
 -- === Global Variables ===
-local cp = {}
-local currentCPIndex = 1
 local autoStealActive = false
 local noClipActive = false
 local walkSpeed = 16
-local isGUIMaximized = true -- Start maximized
+local isGUIMaximized = true
 local isGUIMinimized = false
-local flyHeight = 5
 local flySpeed = 45
-local activeFeatures = {}
 local gameId = 109983668079237
 local espPlayerActive = false
 local espBaseActive = false
 local antiKickActive = false
-local nameChangeInterval = 300 -- 5 minutes in seconds
+local nameChangeInterval = 300
 local lastNameChange = 0
 local playerHighlights = {}
 local baseHighlights = {}
+local infinityJumpEnabled = false
+local isJumping = false
 
 -- GUI Size Settings
 local originalGUISize = UDim2.new(0, 180, 0, 230)
-local maximizedGUISize = UDim2.new(0, 350, 0, 370) -- Increased height for new features
+local maximizedGUISize = UDim2.new(0, 350, 0, 370)
 local minimizedGUISize = UDim2.new(0, 150, 0, 30)
 
 -- === Main GUI ===
 local main = Instance.new("Frame", gui)
 main.Size = maximizedGUISize
-main.Position = UDim2.new(0.5, 0, 0.5, 0) -- Centered
+main.Position = UDim2.new(0.5, 0, 0.5, 0)
 main.AnchorPoint = Vector2.new(0.5, 0.5)
 main.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 main.Active = true
@@ -178,7 +170,7 @@ maximizeButton.TextSize = 16
 maximizeButton.Font = Enum.Font.GothamBold
 maximizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 maximizeButton.TextColor3 = Color3.new(1, 1, 1)
-maximizeButton.Visible = false -- Hidden by default
+maximizeButton.Visible = false
 maximizeButton.ZIndex = 2
 
 local maximizeCorner = Instance.new("UICorner", maximizeButton)
@@ -190,7 +182,7 @@ content.Size = UDim2.new(1, -10, 1, -40)
 content.Position = UDim2.new(0, 5, 0, 35)
 content.BackgroundTransparency = 1
 content.ScrollBarThickness = 4
-content.CanvasSize = UDim2.new(0, 0, 0, 1000) -- Increased for new features
+content.CanvasSize = UDim2.new(0, 0, 0, 1000)
 
 -- Tab System
 local tabContainer = Instance.new("Frame", content)
@@ -210,7 +202,7 @@ mainTab.BackgroundTransparency = 1
 mainTab.Visible = true
 
 local miscTab = Instance.new("Frame", content)
-miscTab.Size = UDim2.new(1, -10, 0, 400) -- Increased height for new features
+miscTab.Size = UDim2.new(1, -10, 0, 400)
 miscTab.Position = UDim2.new(0, 5, 0, 40)
 miscTab.BackgroundTransparency = 1
 miscTab.Visible = false
@@ -252,9 +244,6 @@ local function updateLanguage()
             end
         end
     end
-    
-    -- Update CP dropdown
-    updateCPDropdown()
 end
 
 -- Function to create tab buttons
@@ -293,136 +282,9 @@ end
 
 -- Create tabs
 local mainTabBtn = createTab("Title", mainTab, 0)
-mainTabBtn.BackgroundColor3 = Color3.fromRGB(30, 150, 30) -- Active by default
+mainTabBtn.BackgroundColor3 = Color3.fromRGB(30, 150, 30)
 local miscTabBtn = createTab("Misc", miscTab, 1)
 local settingsTabBtn = createTab("Settings", settingsTab, 2)
-
--- === Checkpoint System ===
-local cpDropdown = Instance.new("TextButton", mainTab)
-cpDropdown.Size = UDim2.new(1, -10, 0, 30)
-cpDropdown.Position = UDim2.new(0, 5, 0, 40)
-cpDropdown.Text = texts[lang].SelectCP
-cpDropdown.TextSize = 14
-cpDropdown.Font = Enum.Font.Gotham
-cpDropdown.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-cpDropdown.TextColor3 = Color3.new(1, 1, 1)
-
-local cpDropdownCorner = Instance.new("UICorner", cpDropdown)
-cpDropdownCorner.CornerRadius = UDim.new(0, 4)
-
-local cpListFrame = Instance.new("ScrollingFrame", gui)
-cpListFrame.Size = UDim2.new(0, 280, 0, 150)
-cpListFrame.Position = UDim2.new(0, main.AbsolutePosition.X + 10, 0, main.AbsolutePosition.Y + 115)
-cpListFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-cpListFrame.BorderSizePixel = 1
-cpListFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
-cpListFrame.Visible = false
-cpListFrame.ZIndex = 10
-cpListFrame.ScrollBarThickness = 4
-cpListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-
-local cpListCorner = Instance.new("UICorner", cpListFrame)
-cpListCorner.CornerRadius = UDim.new(0, 4)
-
-local cpListLayout = Instance.new("UIListLayout", cpListFrame)
-cpListLayout.Padding = UDim.new(0, 2)
-
-local function updateCanvasSize()
-    cpListLayout.Changed:Connect(function()
-        cpListFrame.CanvasSize = UDim2.new(0, 0, 0, cpListLayout.AbsoluteContentSize.Y + 10)
-    end)
-end
-updateCanvasSize()
-
-local function updateCPDropdown()
-    cpDropdown.Text = texts[lang].SelectCP.." ("..#cp..")"
-end
-
-local function createCPButton(index, cframe)
-    local btn = Instance.new("TextButton", cpListFrame)
-    btn.Size = UDim2.new(1, -10, 0, 30)
-    btn.Text = "CP "..index..": "..math.floor(cframe.X)..", "..math.floor(cframe.Y)..", "..math.floor(cframe.Z)
-    btn.TextSize = 12
-    btn.Font = Enum.Font.Gotham
-    btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    
-    local btnCorner = Instance.new("UICorner", btn)
-    btnCorner.CornerRadius = UDim.new(0, 4)
-
-    btn.MouseButton1Click:Connect(function()
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            currentCPIndex = index
-            player.Character.HumanoidRootPart.CFrame = cframe
-            cpListFrame.Visible = false
-            game.StarterGui:SetCore("SendNotification", {
-                Title = texts[lang].Title,
-                Text = texts[lang].CPTeled.." #"..index,
-                Duration = 2
-            })
-        end
-    end)
-
-    return btn
-end
-
-local function saveCurrentCP()
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then 
-        table.insert(cp, hrp.CFrame)
-        createCPButton(#cp, hrp.CFrame)
-        updateCPDropdown()
-        updateCanvasSize()
-        game.StarterGui:SetCore("SendNotification", {
-            Title = texts[lang].Title,
-            Text = texts[lang].CPSaved.." #"..#cp,
-            Duration = 2
-        })
-    end
-end
-
-local function deleteCurrentCP()
-    if #cp > 0 and currentCPIndex <= #cp then
-        table.remove(cp, currentCPIndex)
-        for _, child in pairs(cpListFrame:GetChildren()) do
-            if child:IsA("TextButton") then
-                child:Destroy()
-            end
-        end
-        for i, checkpoint in ipairs(cp) do
-            createCPButton(i, checkpoint)
-        end
-        if #cp == 0 then
-            cpListFrame.Visible = false
-            currentCPIndex = 1
-        elseif currentCPIndex > #cp then
-            currentCPIndex = #cp
-        end
-        updateCPDropdown()
-        updateCanvasSize()
-    end
-end
-
-cpDropdown.MouseButton1Click:Connect(function()
-    if #cp > 0 then
-        cpListFrame.Visible = not cpListFrame.Visible
-        local mainPos = main.AbsolutePosition
-        cpListFrame.Position = UDim2.new(0, mainPos.X + 10, 0, mainPos.Y + 115)
-    end
-end)
-
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        local mousePos = UserInputService:GetMouseLocation()
-        local framePos = cpListFrame.AbsolutePosition
-        local frameSize = cpListFrame.AbsoluteSize
-        
-        if cpListFrame.Visible and (mousePos.X < framePos.X or mousePos.X > framePos.X + frameSize.X or 
-           mousePos.Y < framePos.Y or mousePos.Y > framePos.Y + frameSize.Y) then
-            cpListFrame.Visible = false
-        end
-    end
-end)
 
 -- === Server Hopping Function ===
 local function serverHop()
@@ -449,39 +311,33 @@ local function serverHop()
     end
 end
 
--- === Float Function ===
-local floatActive = false
-local floatBodyVelocity = nil
-
-local function toggleFloat(active)
-    floatActive = active
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+-- === Improved Auto Steal Function ===
+local function findNearestDeliveryHitbox()
+    local plotsFolder = workspace:FindFirstChild("Plots")
+    if not plotsFolder then return nil end
     
-    if not hrp then return end
+    local nearestHitbox = nil
+    local nearestDistance = math.huge
+    local character = player.Character
+    local hrp = character and character:FindFirstChild("HumanoidRootPart")
     
-    if active then
-        floatBodyVelocity = Instance.new("BodyVelocity", hrp)
-        floatBodyVelocity.Velocity = Vector3.new(0, 14, 0)
-        floatBodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
-        
-        spawn(function()
-            while floatActive and floatBodyVelocity and player.Character do
-                if floatBodyVelocity then
-                    floatBodyVelocity.Velocity = Vector3.new(0, 14, 0)
-                end
-                wait(0.1)
+    if not hrp then return nil end
+    
+    for _, plot in pairs(plotsFolder:GetChildren()) do
+        local deliveryHitbox = plot:FindFirstChild("DeliveryHitbox")
+        if deliveryHitbox then
+            local distance = (hrp.Position - deliveryHitbox.Position).Magnitude
+            if distance < nearestDistance then
+                nearestDistance = distance
+                nearestHitbox = deliveryHitbox
             end
-        end)
-    else
-        if floatBodyVelocity then
-            floatBodyVelocity:Destroy()
-            floatBodyVelocity = nil
         end
     end
+    
+    return nearestHitbox
 end
 
--- === Auto Steal ===
-local function flyToPosition(targetCFrame)
+local function flyToPosition(targetPart)
     if not player.Character then return end
     local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
     local hrp = player.Character:FindFirstChild("HumanoidRootPart")
@@ -493,15 +349,15 @@ local function flyToPosition(targetCFrame)
     bodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000)
 
     local startTime = tick()
-    local distance = (hrp.Position - targetCFrame.Position).Magnitude
+    local distance = (hrp.Position - targetPart.Position).Magnitude
 
     while autoStealActive and (tick() - startTime < distance / flySpeed * 1.5) do
         if not player.Character or not hrp or not bodyVelocity then break end
 
-        local direction = (targetCFrame.Position - hrp.Position).Unit
+        local direction = (targetPart.Position - hrp.Position).Unit
         bodyVelocity.Velocity = direction * flySpeed
 
-        local ray = workspace:Raycast(hrp.Position, Vector3.new(0, -3, 0), raycastParams)
+        local ray = workspace:Raycast(hrp.Position, Vector3.new(0, -3, 0))
         
         if ray then
              bodyVelocity.Velocity = Vector3.new(bodyVelocity.Velocity.X, math.min(0, bodyVelocity.Velocity.Y), bodyVelocity.Velocity.Z)
@@ -524,6 +380,46 @@ local function flyToPosition(targetCFrame)
         })
     end
 end
+
+-- === Steal Button GUI ===
+local stealGui = Instance.new("ScreenGui", CoreGui)
+stealGui.Name = "StealButtonGUI"
+stealGui.ResetOnSpawn = false
+
+local stealButton = Instance.new("TextButton", stealGui)
+stealButton.Size = UDim2.new(0, 100, 0, 40)
+stealButton.Position = UDim2.new(1, -120, 0.5, -20)
+stealButton.AnchorPoint = Vector2.new(1, 0.5)
+stealButton.Text = texts[lang].StealButton
+stealButton.TextSize = 14
+stealButton.Font = Enum.Font.GothamBold
+stealButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+stealButton.TextColor3 = Color3.new(1, 1, 1)
+stealButton.Visible = false
+
+local stealButtonCorner = Instance.new("UICorner", stealButton)
+stealButtonCorner.CornerRadius = UDim.new(0, 8)
+
+stealButton.MouseButton1Click:Connect(function()
+    autoStealActive = not autoStealActive
+    if autoStealActive then
+        stealButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        local target = findNearestDeliveryHitbox()
+        if target then
+            flyToPosition(target)
+        else
+            game.StarterGui:SetCore("SendNotification", {
+                Title = texts[lang].Title,
+                Text = "Không tìm thấy DeliveryHitbox!",
+                Duration = 2
+            })
+            autoStealActive = false
+            stealButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        end
+    else
+        stealButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    end
+end)
 
 -- === Anti-Detection NoClip Function ===
 local noClipConnection = nil
@@ -556,7 +452,7 @@ local function improvedNoClip()
     end
 end
 
--- === ESP Player Function ===
+-- === Improved ESP Player Function ===
 local function createPlayerHighlight(plr)
     if plr == player then return end
     
@@ -572,12 +468,30 @@ local function createPlayerHighlight(plr)
     highlight.OutlineTransparency = 0
     highlight.Parent = character
     
-    playerHighlights[plr] = highlight
+    -- Create name label
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESP_Name_"..plr.Name
+    billboard.Adornee = character:WaitForChild("Head") or character:WaitForChild("HumanoidRootPart")
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = character
+    
+    local label = Instance.new("TextLabel", billboard)
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = texts[lang].PlayerName..plr.Name
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamBold
+    
+    playerHighlights[plr] = {highlight = highlight, label = billboard}
     
     -- Handle character changes
     plr.CharacterAdded:Connect(function(newChar)
         if playerHighlights[plr] then
-            playerHighlights[plr]:Destroy()
+            playerHighlights[plr].highlight:Destroy()
+            playerHighlights[plr].label:Destroy()
         end
         
         local newHighlight = Instance.new("Highlight")
@@ -589,7 +503,23 @@ local function createPlayerHighlight(plr)
         newHighlight.OutlineTransparency = 0
         newHighlight.Parent = newChar
         
-        playerHighlights[plr] = newHighlight
+        local newBillboard = Instance.new("BillboardGui")
+        newBillboard.Name = "ESP_Name_"..plr.Name
+        newBillboard.Adornee = newChar:WaitForChild("Head") or newChar:WaitForChild("HumanoidRootPart")
+        newBillboard.Size = UDim2.new(0, 200, 0, 50)
+        newBillboard.StudsOffset = Vector3.new(0, 3, 0)
+        newBillboard.AlwaysOnTop = true
+        newBillboard.Parent = newChar
+        
+        local newLabel = Instance.new("TextLabel", newBillboard)
+        newLabel.Size = UDim2.new(1, 0, 1, 0)
+        newLabel.BackgroundTransparency = 1
+        newLabel.Text = texts[lang].PlayerName..plr.Name
+        newLabel.TextColor3 = Color3.new(1, 1, 1)
+        newLabel.TextScaled = true
+        newLabel.Font = Enum.Font.GothamBold
+        
+        playerHighlights[plr] = {highlight = newHighlight, label = newBillboard}
     end)
 end
 
@@ -598,8 +528,9 @@ local function toggleESPPlayers(active)
     
     if active then
         -- Clear existing highlights
-        for _, highlight in pairs(playerHighlights) do
-            highlight:Destroy()
+        for _, highlightData in pairs(playerHighlights) do
+            highlightData.highlight:Destroy()
+            highlightData.label:Destroy()
         end
         playerHighlights = {}
         
@@ -616,20 +547,30 @@ local function toggleESPPlayers(active)
         -- Remove highlights when players leave
         Players.PlayerRemoving:Connect(function(plr)
             if playerHighlights[plr] then
-                playerHighlights[plr]:Destroy()
+                playerHighlights[plr].highlight:Destroy()
+                playerHighlights[plr].label:Destroy()
                 playerHighlights[plr] = nil
             end
         end)
     else
         -- Remove all highlights
-        for _, highlight in pairs(playerHighlights) do
-            highlight:Destroy()
+        for _, highlightData in pairs(playerHighlights) do
+            highlightData.highlight:Destroy()
+            highlightData.label:Destroy()
         end
         playerHighlights = {}
     end
 end
 
--- === ESP Base Function ===
+-- === Improved ESP Base Function ===
+local function getLockTime(plot)
+    local lockTimeValue = plot:FindFirstChild("LockTime")
+    if lockTimeValue then
+        return lockTimeValue.Value
+    end
+    return 0
+end
+
 local function createBaseHighlight(plot)
     if not plot then return end
     
@@ -642,7 +583,7 @@ local function createBaseHighlight(plot)
     highlight.OutlineTransparency = 0
     highlight.Parent = plot
     
-    -- Create label for the base
+    -- Create label for the base with lock time
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "ESP_Label_"..plot.Name
     billboard.Adornee = plot
@@ -654,12 +595,22 @@ local function createBaseHighlight(plot)
     local label = Instance.new("TextLabel", billboard)
     label.Size = UDim2.new(1, 0, 1, 0)
     label.BackgroundTransparency = 1
-    label.Text = "Base: "..plot.Name
+    label.Text = "Base: "..plot.Name.."\n"..texts[lang].LockTime..getLockTime(plot)
     label.TextColor3 = Color3.new(1, 1, 1)
     label.TextScaled = true
     label.Font = Enum.Font.GothamBold
     
-    baseHighlights[plot] = {highlight = highlight, label = billboard}
+    -- Update lock time periodically
+    local updateConnection
+    updateConnection = RunService.Heartbeat:Connect(function()
+        if not plot or not plot.Parent then
+            updateConnection:Disconnect()
+            return
+        end
+        label.Text = "Base: "..plot.Name.."\n"..texts[lang].LockTime..getLockTime(plot)
+    end)
+    
+    baseHighlights[plot] = {highlight = highlight, label = billboard, connection = updateConnection}
 end
 
 local function toggleESPBases(active)
@@ -668,6 +619,9 @@ local function toggleESPBases(active)
     if active then
         -- Clear existing highlights
         for _, highlightData in pairs(baseHighlights) do
+            if highlightData.connection then
+                highlightData.connection:Disconnect()
+            end
             highlightData.highlight:Destroy()
             highlightData.label:Destroy()
         end
@@ -692,6 +646,9 @@ local function toggleESPBases(active)
     else
         -- Remove all highlights
         for _, highlightData in pairs(baseHighlights) do
+            if highlightData.connection then
+                highlightData.connection:Disconnect()
+            end
             highlightData.highlight:Destroy()
             highlightData.label:Destroy()
         end
@@ -699,10 +656,30 @@ local function toggleESPBases(active)
     end
 end
 
+-- === Infinity Jump Function ===
+local function toggleInfinityJump(active)
+    infinityJumpEnabled = active
+    
+    if active then
+        UserInputService.JumpRequest:Connect(function()
+            if infinityJumpEnabled and not isJumping then
+                isJumping = true
+                local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+                wait(0.1)
+                isJumping = false
+            end
+        end)
+    end
+end
+
 -- === Anti-Kick Protection ===
 local function changeGUIName()
     local randomName = "PongbHub_"..HttpService:GenerateGUID(false)
     gui.Name = randomName
+    stealGui.Name = "StealButton_"..HttpService:GenerateGUID(false)
     lastNameChange = tick()
 end
 
@@ -816,6 +793,9 @@ local function createButton(name, posY, callback, isToggle, parent)
             active = not active
             callback(active)
             btn.BackgroundColor3 = active and Color3.fromRGB(30, 150, 30) or Color3.fromRGB(60, 60, 60)
+            if name == "AutoSteal" then
+                stealButton.Visible = active
+            end
         end)
     else
         btn.MouseButton1Click:Connect(callback)
@@ -825,18 +805,26 @@ local function createButton(name, posY, callback, isToggle, parent)
 end
 
 -- Main Tab Buttons
-createButton("SaveCP", 0, saveCurrentCP, false, mainTab)
-createButton("DeleteCP", 80, deleteCurrentCP, false, mainTab)
-createButton("AutoSteal", 120, function(active)
+createButton("AutoSteal", 0, function(active)
     autoStealActive = active
-    if active and #cp > 0 then
-        flyToPosition(cp[currentCPIndex])
+    if active then
+        local target = findNearestDeliveryHitbox()
+        if target then
+            flyToPosition(target)
+        else
+            game.StarterGui:SetCore("SendNotification", {
+                Title = texts[lang].Title,
+                Text = "Không tìm thấy DeliveryHitbox!",
+                Duration = 2
+            })
+            autoStealActive = false
+        end
     end
 end, true, mainTab)
 
-createButton("Float", 160, toggleFloat, true, mainTab)
+createButton("InfinityJump", 40, toggleInfinityJump, true, mainTab)
 
-createButton("NoClip", 200, function(active)
+createButton("NoClip", 80, function(active)
     noClipActive = active
     improvedNoClip()
 end, true, mainTab)
@@ -844,7 +832,7 @@ end, true, mainTab)
 -- Speed Control
 local speedLabel = Instance.new("TextLabel", mainTab)
 speedLabel.Size = UDim2.new(1, -10, 0, 20)
-speedLabel.Position = UDim2.new(0, 5, 0, 240)
+speedLabel.Position = UDim2.new(0, 5, 0, 120)
 speedLabel.Text = texts[lang].CurrentSpeed..walkSpeed
 speedLabel.TextSize = 14
 speedLabel.Font = Enum.Font.Gotham
@@ -854,7 +842,7 @@ speedLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 local speedSlider = Instance.new("TextBox", mainTab)
 speedSlider.Size = UDim2.new(0.6, -5, 0, 30)
-speedSlider.Position = UDim2.new(0, 5, 0, 260)
+speedSlider.Position = UDim2.new(0, 5, 0, 140)
 speedSlider.Text = tostring(walkSpeed)
 speedSlider.PlaceholderText = "16-10000"
 speedSlider.TextSize = 14
@@ -865,7 +853,7 @@ speedSlider.TextColor3 = Color3.new(1, 1, 1)
 local speedSliderCorner = Instance.new("UICorner", speedSlider)
 speedSliderCorner.CornerRadius = UDim.new(0, 4)
 
-local speedBtn = createButton("SetSpeed", 260, function()
+local speedBtn = createButton("SetSpeed", 140, function()
     local newSpeed = tonumber(speedSlider.Text)
     if newSpeed and newSpeed >= 16 and newSpeed <= 10000 then
         walkSpeed = newSpeed
@@ -881,7 +869,7 @@ local speedBtn = createButton("SetSpeed", 260, function()
     end
 end, false, mainTab)
 speedBtn.Size = UDim2.new(0.4, -10, 0, 30)
-speedBtn.Position = UDim2.new(0.6, 5, 0, 260)
+speedBtn.Position = UDim2.new(0.6, 5, 0, 140)
 
 -- Misc Tab Content
 createButton("Rejoin", 0, function()
@@ -894,6 +882,7 @@ end, false, miscTab)
 
 createButton("DeleteGUI", 80, function()
     gui:Destroy()
+    stealGui:Destroy()
 end, false, miscTab)
 
 -- ESP Player Button
@@ -931,6 +920,7 @@ langToggleCorner.CornerRadius = UDim.new(0, 4)
 langToggle.MouseButton1Click:Connect(function()
     lang = (lang == "vi") and "en" or "vi"
     updateLanguage()
+    stealButton.Text = texts[lang].StealButton
 end)
 
 -- Anti-Kick Button
@@ -968,6 +958,7 @@ closeButton.MouseButton1Click:Connect(function()
     minimizeGUI()
     wait(0.1)
     gui:Destroy()
+    stealGui:Destroy()
 end)
 
 -- F1 Toggle for GUI
@@ -986,11 +977,6 @@ local startPos
 local function update(input)
     local delta = input.Position - dragStart
     main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    
-    if cpListFrame.Visible then
-        local mainPos = main.AbsolutePosition
-        cpListFrame.Position = UDim2.new(0, mainPos.X + 10, 0, mainPos.Y + 115)
-    end
 end
 
 titleBar.InputBegan:Connect(function(input)
@@ -1026,30 +1012,18 @@ player.CharacterAdded:Connect(function()
         player.Character.Humanoid.WalkSpeed = walkSpeed
     end
     
-    if floatActive then
-        floatActive = false
-        floatBodyVelocity = nil
-    end
-    
     if noClipConnection then
         noClipConnection:Disconnect()
         noClipConnection = nil
     end
 end)
 
--- === Tạo GUI tròn nhỏ ===
-local Players = game:GetService("Players")
-local HttpService = game:GetService("HttpService")
-local UserInputService = game:GetService("UserInputService")
+-- === Circle GUI ===
+local circleGui = Instance.new("ScreenGui", CoreGui)
+circleGui.Name = "CircleGUI_"..HttpService:GenerateGUID(false)
+circleGui.ResetOnSpawn = false
 
-local player = Players.LocalPlayer
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "CircleGUI"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = player:WaitForChild("PlayerGui")
-
--- Nút hình tròn
-local circleButton = Instance.new("TextButton")
+local circleButton = Instance.new("TextButton", circleGui)
 circleButton.Size = UDim2.new(0, 60, 0, 60)
 circleButton.Position = UDim2.new(0, 100, 0, 100)
 circleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
@@ -1058,96 +1032,90 @@ circleButton.TextColor3 = Color3.new(1,1,1)
 circleButton.Font = Enum.Font.GothamBold
 circleButton.TextScaled = true
 circleButton.BorderSizePixel = 0
-circleButton.Parent = screenGui
 
-local uicorner = Instance.new("UICorner", circleButton)
-uicorner.CornerRadius = UDim.new(1, 0)
+local circleCorner = Instance.new("UICorner", circleButton)
+circleCorner.CornerRadius = UDim.new(1, 0)
 
--- Nút X
-local closeButton = Instance.new("TextButton", circleButton)
-closeButton.Size = UDim2.new(0, 20, 0, 20)
-closeButton.Position = UDim2.new(1, -15, 0, -5)
-closeButton.AnchorPoint = Vector2.new(1, 0)
-closeButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-closeButton.Text = "X"
-closeButton.TextColor3 = Color3.new(1,1,1)
-closeButton.Font = Enum.Font.GothamBold
-closeButton.TextScaled = true
-closeButton.BorderSizePixel = 0
+-- Close button for circle GUI
+local circleCloseButton = Instance.new("TextButton", circleButton)
+circleCloseButton.Size = UDim2.new(0, 20, 0, 20)
+circleCloseButton.Position = UDim2.new(1, -15, 0, -5)
+circleCloseButton.AnchorPoint = Vector2.new(1, 0)
+circleCloseButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+circleCloseButton.Text = "X"
+circleCloseButton.TextColor3 = Color3.new(1,1,1)
+circleCloseButton.Font = Enum.Font.GothamBold
+circleCloseButton.TextScaled = true
+circleCloseButton.BorderSizePixel = 0
 
-local uicorner2 = Instance.new("UICorner", closeButton)
-uicorner2.CornerRadius = UDim.new(0.5, 0)
+local circleCloseCorner = Instance.new("UICorner", circleCloseButton)
+circleCloseCorner.CornerRadius = UDim.new(0.5, 0)
 
--- Xóa GUI khi bấm X
-closeButton.MouseButton1Click:Connect(function()
-    screenGui:Destroy()
-    if gui then gui:Destroy() end -- xóa luôn GUI lớn nếu tồn tại
+-- Delete both GUIs when X is clicked
+circleCloseButton.MouseButton1Click:Connect(function()
+    gui:Destroy()
+    circleGui:Destroy()
+    stealGui:Destroy()
 end)
 
--- Ẩn/hiện GUI chính khi bấm nút tròn
+-- Toggle main GUI when circle button is clicked
 circleButton.MouseButton1Click:Connect(function()
-    if gui then
-        gui.Enabled = not gui.Enabled
+    main.Visible = not main.Visible
+end)
+
+-- Make circle GUI draggable
+local circleDragging = false
+local circleDragInput, circleMousePos, circleFramePos
+
+circleButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        circleDragging = true
+        circleMousePos = input.Position
+        circleFramePos = circleButton.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                circleDragging = false
+            end
+        end)
     end
 end)
 
--- Kéo GUI
-local dragging = false
-local dragInput, mousePos, framePos
-
-circleButton.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragging = true
-		mousePos = input.Position
-		framePos = circleButton.Position
-
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				dragging = false
-			end
-		end)
-	end
-end)
-
 circleButton.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement then
-		dragInput = input
-	end
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        circleDragInput = input
+    end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-	if input == dragInput and dragging then
-		local delta = input.Position - mousePos
-		circleButton.Position = UDim2.new(
-			framePos.X.Scale,
-			framePos.X.Offset + delta.X,
-			framePos.Y.Scale,
-			framePos.Y.Offset + delta.Y
-		)
-	end
+    if input == circleDragInput and circleDragging then
+        local delta = input.Position - circleMousePos
+        circleButton.Position = UDim2.new(
+            circleFramePos.X.Scale,
+            circleFramePos.X.Offset + delta.X,
+            circleFramePos.Y.Scale,
+            circleFramePos.Y.Offset + delta.Y
+        )
+    end
 end)
 
--- Đổi tên GUI 2 phút/lần
+-- Random name change for circle GUI
 local randomNames = {
     "ControllerUI", "HelperPanel", "DebugMode", "SystemOverlay",
     "AccessPoint", "HiddenUI", "ToolModule", "Circle", "QuickMenu", "BubbleCore"
 }
 
 task.spawn(function()
-	while screenGui and screenGui.Parent do
-		task.wait(120)
-		local newName = randomNames[math.random(1, #randomNames)]
-		screenGui.Name = newName
-		print("Circle GUI name changed to:", newName)
-	end
+    while circleGui and circleGui.Parent do
+        task.wait(120)
+        local newName = randomNames[math.random(1, #randomNames)]
+        circleGui.Name = newName
+    end
 end)
 
-
 -- Initialize
-updateCPDropdown()
 updateLanguage()
 
 if player.Character and player.Character:FindFirstChild("Humanoid") then
     player.Character.Humanoid.WalkSpeed = walkSpeed
 end
-
