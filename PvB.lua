@@ -1,5 +1,6 @@
 -- Stock Predictions API Script for Executor
--- Plants Vs Brainrot Stock Predictions - Fixed Version
+-- Plants Vs Brainrot Stock Predictions - FIXED & IMPROVED VERSION
+-- All bugs fixed + Performance optimizations + Better error handling
 
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -7,30 +8,21 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
--- Anti-detection measures
-local function secureCreate(className, properties)
-    local success, instance = pcall(function()
-        local obj = Instance.new(className)
-        for prop, value in pairs(properties) do
-            pcall(function()
-                obj[prop] = value
-            end)
-        end
-        return obj
-    end)
-    return success and instance or nil
-end
+-- ========================================
+-- GLOBAL STATE & CONFIGURATION
+-- ========================================
 
--- API Configuration
 local API_BASE = "https://stock-predicitions-api.vercel.app/api"
+local CACHE_DURATION = 60 -- seconds
+local MAX_RETRIES = 3
+local RETRY_DELAY = 1
 
--- Mã hóa tên instance để tránh detection
-local function getObfuscatedName(baseName)
-    local prefixes = {"UI", "Frame", "Container", "Display", "View"}
-    local suffixes = {"Manager", "Handler", "Controller", "Interface"}
-    local randomId = math.random(1000, 9999)
-    return prefixes[math.random(1, #prefixes)] .. suffixes[math.random(1, #suffixes)] .. randomId
-end
+-- Connection tracking để cleanup
+local activeConnections = {}
+local isFetching = false
+
+-- Cache system
+local cache = {}
 
 -- Premium UI Colors
 local COLOR_SCHEME = {
@@ -44,7 +36,102 @@ local COLOR_SCHEME = {
     TextSecondary = Color3.fromRGB(180, 180, 200)
 }
 
--- Tạo gradient background đẹp
+-- ========================================
+-- UTILITY FUNCTIONS
+-- ========================================
+
+-- Safe instance creation
+local function secureCreate(className, properties)
+    local success, instance = pcall(function()
+        local obj = Instance.new(className)
+        for prop, value in pairs(properties or {}) do
+            pcall(function()
+                obj[prop] = value
+            end)
+        end
+        return obj
+    end)
+    return success and instance or nil
+end
+
+-- Obfuscated naming
+local function getObfuscatedName(baseName)
+    local prefixes = {"UI", "Frame", "Container", "Display", "View"}
+    local suffixes = {"Manager", "Handler", "Controller", "Interface"}
+    local randomId = math.random(1000, 9999)
+    return prefixes[math.random(1, #prefixes)] .. suffixes[math.random(1, #suffixes)] .. randomId
+end
+
+-- Track connections for cleanup
+local function trackConnection(connection)
+    table.insert(activeConnections, connection)
+    return connection
+end
+
+-- Cleanup all connections
+local function cleanupConnections()
+    for _, connection in ipairs(activeConnections) do
+        if connection and connection.Connected then
+            connection:Disconnect()
+        end
+    end
+    activeConnections = {}
+end
+
+-- Format Unix timestamp to readable time
+local function formatUnixTime(unix)
+    local currentTime = os.time()
+    local diff = unix - currentTime
+    
+    if diff < 0 then
+        return "Passed"
+    elseif diff < 60 then
+        return diff .. "s"
+    elseif diff < 3600 then
+        return math.floor(diff / 60) .. "m"
+    elseif diff < 86400 then
+        return math.floor(diff / 3600) .. "h"
+    else
+        return math.floor(diff / 86400) .. "d"
+    end
+end
+
+-- Input validation
+local function validateItemName(name)
+    if not name or type(name) ~= "string" then
+        return false, "Invalid item name"
+    end
+    
+    name = name:gsub("^%s*(.-)%s*$", "%1") -- trim whitespace
+    
+    if #name < 2 then
+        return false, "Name too short (min 2 characters)"
+    end
+    
+    if #name > 50 then
+        return false, "Name too long (max 50 characters)"
+    end
+    
+    return true, name
+end
+
+local function validateAmount(amount)
+    local num = tonumber(amount)
+    if not num then
+        return false, "Amount must be a number"
+    end
+    
+    if num < 1 or num > 10 then
+        return false, "Amount must be between 1-10"
+    end
+    
+    return true, math.floor(num)
+end
+
+-- ========================================
+-- UI COMPONENTS
+-- ========================================
+
 local function createGradient(parent)
     local gradient = secureCreate("UIGradient", {
         Rotation = 45,
@@ -56,22 +143,9 @@ local function createGradient(parent)
     if gradient and parent then
         gradient.Parent = parent
     end
+    return gradient
 end
 
--- Tạo hiệu ứng shadow
-local function createShadow(frame)
-    local shadow = secureCreate("Frame", {
-        Size = frame.Size + UDim2.new(0, 10, 0, 10),
-        Position = frame.Position + UDim2.new(0, -5, 0, -5),
-        BackgroundColor3 = Color3.new(0, 0, 0),
-        BackgroundTransparency = 0.8,
-        BorderSizePixel = 0,
-        ZIndex = frame.ZIndex - 1
-    })
-    return shadow
-end
-
--- Tạo button với hiệu ứng hover
 local function createModernButton(parent, text, size, position)
     local buttonContainer = secureCreate("Frame", {
         Size = size,
@@ -97,29 +171,26 @@ local function createModernButton(parent, text, size, position)
         Parent = button
     })
     
-    -- Hiệu ứng hover
-    button.MouseEnter:Connect(function()
-        if button then
-            local tween = TweenService:Create(button, TweenInfo.new(0.2), {
+    -- Hover effects
+    trackConnection(button.MouseEnter:Connect(function()
+        if button and button.Parent then
+            TweenService:Create(button, TweenInfo.new(0.2), {
                 BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-            })
-            tween:Play()
+            }):Play()
         end
-    end)
+    end))
     
-    button.MouseLeave:Connect(function()
-        if button then
-            local tween = TweenService:Create(button, TweenInfo.new(0.2), {
+    trackConnection(button.MouseLeave:Connect(function()
+        if button and button.Parent then
+            TweenService:Create(button, TweenInfo.new(0.2), {
                 BackgroundColor3 = COLOR_SCHEME.Accent
-            })
-            tween:Play()
+            }):Play()
         end
-    end)
+    end))
     
     return button
 end
 
--- Tạo input field hiện đại
 local function createModernInput(parent, placeholder, size, position)
     local container = secureCreate("Frame", {
         Size = size,
@@ -153,42 +224,41 @@ local function createModernInput(parent, placeholder, size, position)
         Parent = input
     })
     
-    -- Hiệu ứng focus
-    input.Focused:Connect(function()
-        if input then
-            local tween = TweenService:Create(input, TweenInfo.new(0.2), {
+    -- Focus effects
+    trackConnection(input.Focused:Connect(function()
+        if input and input.Parent then
+            TweenService:Create(input, TweenInfo.new(0.2), {
                 BackgroundColor3 = Color3.fromRGB(45, 45, 65)
-            })
-            tween:Play()
+            }):Play()
         end
-    end)
+    end))
     
-    input.FocusLost:Connect(function()
-        if input then
-            local tween = TweenService:Create(input, TweenInfo.new(0.2), {
+    trackConnection(input.FocusLost:Connect(function()
+        if input and input.Parent then
+            TweenService:Create(input, TweenInfo.new(0.2), {
                 BackgroundColor3 = COLOR_SCHEME.Secondary
-            })
-            tween:Play()
+            }):Play()
         end
-    end)
+    end))
     
     return input
 end
 
--- Tạo loading animation
 local function createLoadingSpinner(parent)
     local spinner = secureCreate("Frame", {
-        Size = UDim2.new(0, 30, 0, 30),
-        Position = UDim2.new(0.5, -15, 0.5, -15),
+        Size = UDim2.new(0, 40, 0, 40),
+        Position = UDim2.new(0.5, -20, 0.5, -20),
         BackgroundTransparency = 1,
+        ZIndex = 10,
         Parent = parent
     })
     
-    local circle = secureCreate("Frame", {
-        Size = UDim2.new(0, 20, 0, 20),
-        Position = UDim2.new(0.5, -10, 0.5, -10),
-        BackgroundColor3 = COLOR_SCHEME.Accent,
-        BorderSizePixel = 0,
+    local circle = secureCreate("ImageLabel", {
+        Size = UDim2.new(0, 30, 0, 30),
+        Position = UDim2.new(0.5, -15, 0.5, -15),
+        BackgroundTransparency = 1,
+        Image = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+        ImageColor3 = COLOR_SCHEME.Accent,
         Parent = spinner
     })
     
@@ -198,36 +268,102 @@ local function createLoadingSpinner(parent)
     })
     
     local rotation = 0
-    local connection
-    connection = RunService.Heartbeat:Connect(function(delta)
-        if spinner and circle then
-            rotation = (rotation + 360 * delta) % 360
+    local connection = trackConnection(RunService.Heartbeat:Connect(function(delta)
+        if spinner and spinner.Parent and circle and circle.Parent then
+            rotation = (rotation + 360 * delta * 2) % 360
             circle.Rotation = rotation
         else
-            if connection then
+            if connection and connection.Connected then
                 connection:Disconnect()
             end
         end
-    end)
+    end))
     
     return spinner, connection
 end
 
--- Custom GUI Creation với kích thước hình vuông
+-- ========================================
+-- API FUNCTIONS
+-- ========================================
+
+-- Fetch with retry logic and proper error handling
+local function fetchStockPredictions(itemName, amount)
+    -- Check cache first
+    local cacheKey = itemName:lower() .. "_" .. amount
+    local cached = cache[cacheKey]
+    
+    if cached and (os.time() - cached.time) < CACHE_DURATION then
+        return cached.data, nil, true -- true = from cache
+    end
+    
+    local encodedName = HttpService:UrlEncode(itemName)
+    local url = API_BASE .. "/Stock?name=" .. encodedName .. "&amount=" .. tostring(amount)
+    
+    for attempt = 1, MAX_RETRIES do
+        local success, result = pcall(function()
+            return HttpService:RequestAsync({
+                Url = url,
+                Method = "GET",
+                Headers = {
+                    ["Content-Type"] = "application/json"
+                }
+            })
+        end)
+        
+        -- Check if request succeeded
+        if success and type(result) == "table" and result.Success then
+            -- Try to parse JSON
+            local parseSuccess, data = pcall(function()
+                return HttpService:JSONDecode(result.Body)
+            end)
+            
+            if parseSuccess and type(data) == "table" then
+                -- Cache the result
+                cache[cacheKey] = {
+                    data = data,
+                    time = os.time()
+                }
+                return data, nil, false
+            else
+                return nil, "Failed to parse API response"
+            end
+        end
+        
+        -- Retry logic
+        if attempt < MAX_RETRIES then
+            wait(RETRY_DELAY)
+        else
+            local errorMsg = "API request failed"
+            if type(result) == "string" then
+                errorMsg = errorMsg .. ": " .. result
+            elseif type(result) == "table" and result.StatusMessage then
+                errorMsg = errorMsg .. ": " .. result.StatusMessage
+            end
+            return nil, errorMsg
+        end
+    end
+    
+    return nil, "Failed after " .. MAX_RETRIES .. " attempts"
+end
+
+-- ========================================
+-- GUI CREATION
+-- ========================================
+
 local function createCompactGUI()
-    -- Tạo ScreenGui ẩn danh
     local screenGui = secureCreate("ScreenGui", {
         Name = getObfuscatedName("MainGUI"),
         ResetOnSpawn = false,
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
         Parent = player:WaitForChild("PlayerGui")
     })
     
     if not screenGui then return nil end
 
-    -- Main Container - Hình vuông 400x400
+    -- Main Container
     local mainContainer = secureCreate("Frame", {
-        Size = UDim2.new(0, 400, 0, 400),
-        Position = UDim2.new(0.5, -200, 0.5, -200),
+        Size = UDim2.new(0, 400, 0, 450),
+        Position = UDim2.new(0.5, -200, 0.5, -225),
         BackgroundColor3 = COLOR_SCHEME.Background,
         BorderSizePixel = 0,
         Parent = screenGui
@@ -270,6 +406,7 @@ local function createCompactGUI()
 
     -- Close button
     local closeBtn = createModernButton(header, "×", UDim2.new(0, 30, 0, 30), UDim2.new(1, -35, 0.5, -15))
+    closeBtn.TextSize = 20
 
     -- Content area
     local content = secureCreate("Frame", {
@@ -286,10 +423,8 @@ local function createCompactGUI()
         Parent = content
     })
 
-    -- Item input
-    local itemInput = createModernInput(inputSection, "Item name (Mango Seed, etc.)", UDim2.new(1, 0, 0, 35), UDim2.new(0, 0, 0, 0))
+    local itemInput = createModernInput(inputSection, "Item name (e.g. Mango Seed)", UDim2.new(1, 0, 0, 35), UDim2.new(0, 0, 0, 0))
 
-    -- Amount input và fetch button container
     local bottomRow = secureCreate("Frame", {
         Size = UDim2.new(1, 0, 0, 35),
         Position = UDim2.new(0, 0, 0, 45),
@@ -297,14 +432,14 @@ local function createCompactGUI()
         Parent = inputSection
     })
 
-    local amountInput = createModernInput(bottomRow, "Amount", UDim2.new(0.35, 0, 1, 0), UDim2.new(0, 0, 0, 0))
+    local amountInput = createModernInput(bottomRow, "Amount (1-10)", UDim2.new(0.35, 0, 1, 0), UDim2.new(0, 0, 0, 0))
     amountInput.Text = "5"
 
     local fetchBtn = createModernButton(bottomRow, "🔍 FETCH", UDim2.new(0.62, 0, 1, 0), UDim2.new(0.38, 0, 0, 0))
 
     -- Results section
     local resultsSection = secureCreate("Frame", {
-        Size = UDim2.new(1, 0, 1, -90),
+        Size = UDim2.new(1, 0, 1, -115),
         Position = UDim2.new(0, 0, 0, 85),
         BackgroundTransparency = 1,
         Parent = content
@@ -327,6 +462,7 @@ local function createCompactGUI()
         BackgroundColor3 = COLOR_SCHEME.Secondary,
         BorderSizePixel = 0,
         ScrollBarThickness = 4,
+        ScrollBarImageColor3 = COLOR_SCHEME.Accent,
         CanvasSize = UDim2.new(0, 0, 0, 0),
         Parent = resultsSection
     })
@@ -345,13 +481,14 @@ local function createCompactGUI()
         PaddingTop = UDim.new(0, 8),
         PaddingLeft = UDim.new(0, 8),
         PaddingRight = UDim.new(0, 8),
+        PaddingBottom = UDim.new(0, 8),
         Parent = resultsScroll
     })
 
     -- Status bar
     local statusBar = secureCreate("Frame", {
-        Size = UDim2.new(1, 0, 0, 20),
-        Position = UDim2.new(0, 0, 1, -25),
+        Size = UDim2.new(1, 0, 0, 25),
+        Position = UDim2.new(0, 0, 1, -30),
         BackgroundColor3 = COLOR_SCHEME.Secondary,
         BorderSizePixel = 0,
         Parent = content
@@ -387,29 +524,11 @@ local function createCompactGUI()
     }
 end
 
--- FIXED API Call function
-local function fetchStockPredictions(itemName, amount)
-    local encodedName = HttpService:UrlEncode(itemName)
-    local url = API_BASE .. "/Stock?name=" .. encodedName .. "&amount=" .. tostring(math.clamp(amount, 1, 10))
-    
-    local success, result = pcall(function()
-        -- Sử dụng RequestAsync thay vì GetAsync để có更多 control
-        return HttpService:RequestAsync({
-            Url = url,
-            Method = "GET"
-        })
-    end)
-    
-    if success and result.Success then
-        local data = HttpService:JSONDecode(result.Body)
-        return data
-    else
-        return nil, "API request failed. Check item name or try again."
-    end
-end
+-- ========================================
+-- DISPLAY FUNCTIONS
+-- ========================================
 
--- Hiển thị kết quả với format mới từ API
-local function displayResults(gui, data)
+local function displayResults(gui, data, fromCache)
     -- Clear previous results
     for _, child in ipairs(gui.ResultsScroll:GetChildren()) do
         if child:IsA("Frame") then
@@ -427,7 +546,7 @@ local function displayResults(gui, data)
     
     for index, item in ipairs(data) do
         local itemFrame = secureCreate("Frame", {
-            Size = UDim2.new(1, 0, 0, 60),
+            Size = UDim2.new(1, 0, 0, 75),
             BackgroundColor3 = COLOR_SCHEME.Background,
             BorderSizePixel = 0,
             Parent = gui.ResultsScroll
@@ -438,7 +557,6 @@ local function displayResults(gui, data)
             Parent = itemFrame
         })
 
-        -- Item info container
         local infoContainer = secureCreate("Frame", {
             Size = UDim2.new(1, -10, 1, -10),
             Position = UDim2.new(0, 5, 0, 5),
@@ -446,9 +564,9 @@ local function displayResults(gui, data)
             Parent = itemFrame
         })
 
-        -- Header với name và type
+        -- Header
         local header = secureCreate("Frame", {
-            Size = UDim2.new(1, 0, 0, 18),
+            Size = UDim2.new(1, 0, 0, 20),
             BackgroundTransparency = 1,
             Parent = infoContainer
         })
@@ -459,7 +577,7 @@ local function displayResults(gui, data)
             Text = tostring(item.Name or "Unknown"),
             TextColor3 = COLOR_SCHEME.TextPrimary,
             Font = Enum.Font.GothamBold,
-            TextSize = 11,
+            TextSize = 12,
             TextXAlignment = Enum.TextXAlignment.Left,
             TextTruncate = Enum.TextTruncate.AtEnd,
             Parent = header
@@ -469,9 +587,9 @@ local function displayResults(gui, data)
             Size = UDim2.new(0.4, 0, 1, 0),
             Position = UDim2.new(0.6, 0, 0, 0),
             BackgroundTransparency = 1,
-            Text = tostring(item.Type or "Unknown"),
+            Text = "📦 " .. tostring(item.Type or "Unknown"),
             TextColor3 = COLOR_SCHEME.Accent,
-            Font = Enum.Font.Gotham,
+            Font = Enum.Font.GothamBold,
             TextSize = 10,
             TextXAlignment = Enum.TextXAlignment.Right,
             Parent = header
@@ -479,8 +597,8 @@ local function displayResults(gui, data)
 
         -- Details row
         local details = secureCreate("Frame", {
-            Size = UDim2.new(1, 0, 0, 16),
-            Position = UDim2.new(0, 0, 0, 20),
+            Size = UDim2.new(1, 0, 0, 18),
+            Position = UDim2.new(0, 0, 0, 22),
             BackgroundTransparency = 1,
             Parent = infoContainer
         })
@@ -488,10 +606,10 @@ local function displayResults(gui, data)
         local stockLabel = secureCreate("TextLabel", {
             Size = UDim2.new(0.5, 0, 1, 0),
             BackgroundTransparency = 1,
-            Text = "Stock: " .. tostring(item.Stock or "0"),
+            Text = "📊 Stock: " .. tostring(item.Stock or "0"),
             TextColor3 = COLOR_SCHEME.Success,
             Font = Enum.Font.Gotham,
-            TextSize = 10,
+            TextSize = 11,
             TextXAlignment = Enum.TextXAlignment.Left,
             Parent = details
         })
@@ -500,54 +618,55 @@ local function displayResults(gui, data)
             Size = UDim2.new(0.5, 0, 1, 0),
             Position = UDim2.new(0.5, 0, 0, 0),
             BackgroundTransparency = 1,
-            Text = "Restock: " .. tostring(item.RestockAway or "0"),
+            Text = "⏱️ In: " .. tostring(item.RestockAway or "0") .. " min",
             TextColor3 = COLOR_SCHEME.Warning,
             Font = Enum.Font.Gotham,
-            TextSize = 10,
+            TextSize = 11,
             TextXAlignment = Enum.TextXAlignment.Right,
             Parent = details
         })
 
-        -- Bottom row với index và unix
+        -- Bottom row
         local bottom = secureCreate("Frame", {
-            Size = UDim2.new(1, 0, 0, 14),
-            Position = UDim2.new(0, 0, 0, 38),
+            Size = UDim2.new(1, 0, 0, 16),
+            Position = UDim2.new(0, 0, 0, 42),
             BackgroundTransparency = 1,
             Parent = infoContainer
         })
 
         local indexLabel = secureCreate("TextLabel", {
-            Size = UDim2.new(0.5, 0, 1, 0),
+            Size = UDim2.new(0.3, 0, 1, 0),
             BackgroundTransparency = 1,
             Text = "#" .. tostring(item.Index or "0"),
             TextColor3 = COLOR_SCHEME.TextSecondary,
-            Font = Enum.Font.Gotham,
-            TextSize = 9,
+            Font = Enum.Font.GothamBold,
+            TextSize = 10,
             TextXAlignment = Enum.TextXAlignment.Left,
             Parent = bottom
         })
 
-        local unixLabel = secureCreate("TextLabel", {
-            Size = UDim2.new(0.5, 0, 1, 0),
-            Position = UDim2.new(0.5, 0, 0, 0),
+        local timeLabel = secureCreate("TextLabel", {
+            Size = UDim2.new(0.7, 0, 1, 0),
+            Position = UDim2.new(0.3, 0, 0, 0),
             BackgroundTransparency = 1,
-            Text = "TS: " .. tostring(item.Unix or "0"),
+            Text = "🕐 " .. formatUnixTime(item.Unix or 0),
             TextColor3 = COLOR_SCHEME.TextSecondary,
             Font = Enum.Font.Gotham,
-            TextSize = 9,
+            TextSize = 10,
             TextXAlignment = Enum.TextXAlignment.Right,
             Parent = bottom
         })
 
-        totalHeight = totalHeight + 66
+        totalHeight = totalHeight + 81
         
-        -- Animation entrance
-        itemFrame.Position = UDim2.new(0, 0, 0, (index-1)*66)
+        -- Entrance animation
+        itemFrame.Position = UDim2.new(0, -400, 0, 0)
         itemFrame.BackgroundTransparency = 1
         
-        delay((index-1)*0.1, function()
-            if itemFrame then
-                local tween = TweenService:Create(itemFrame, TweenInfo.new(0.3), {
+        task.delay(index * 0.05, function()
+            if itemFrame and itemFrame.Parent then
+                local tween = TweenService:Create(itemFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                    Position = UDim2.new(0, 0, 0, 0),
                     BackgroundTransparency = 0
                 })
                 tween:Play()
@@ -556,11 +675,19 @@ local function displayResults(gui, data)
     end
 
     gui.ResultsScroll.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
-    gui.StatusLabel.Text = "✅ Loaded " .. #data .. " predictions"
+    
+    local statusText = "✅ Loaded " .. #data .. " predictions"
+    if fromCache then
+        statusText = statusText .. " (cached)"
+    end
+    gui.StatusLabel.Text = statusText
     gui.StatusLabel.TextColor3 = COLOR_SCHEME.Success
 end
 
--- Main execution với error handling
+-- ========================================
+-- MAIN FUNCTION
+-- ========================================
+
 local function main()
     local success, gui = pcall(createCompactGUI)
     
@@ -569,93 +696,122 @@ local function main()
         return
     end
 
-    -- Make GUI draggable
+    -- Dragging functionality (with single connection)
     local dragging = false
     local dragInput, dragStart, startPos
     
-    gui.MainContainer.InputBegan:Connect(function(input)
+    trackConnection(gui.MainContainer.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             dragStart = input.Position
             startPos = gui.MainContainer.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
         end
-    end)
+    end))
     
-    gui.MainContainer.InputChanged:Connect(function(input)
+    trackConnection(gui.MainContainer.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement then
             dragInput = input
         end
-    end)
+    end))
     
-    game:GetService("UserInputService").InputChanged:Connect(function(input)
-        if input == dragInput and dragging and gui.MainContainer then
+    trackConnection(game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if input == dragInput and dragging and gui.MainContainer and gui.MainContainer.Parent then
             local delta = input.Position - dragStart
-            gui.MainContainer.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            gui.MainContainer.Position = UDim2.new(
+                startPos.X.Scale, 
+                startPos.X.Offset + delta.X, 
+                startPos.Y.Scale, 
+                startPos.Y.Offset + delta.Y
+            )
         end
-    end)
+    end))
+    
+    trackConnection(game:GetService("UserInputService").InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end))
 
-    -- Fetch button event
-    gui.FetchButton.MouseButton1Click:Connect(function()
-        local itemName = gui.ItemInput.Text
-        local amount = tonumber(gui.AmountInput.Text) or 5
-        
-        if itemName == "" then
-            gui.StatusLabel.Text = "⚠️ Enter item name"
+    -- Fetch button event (with debounce)
+    trackConnection(gui.FetchButton.MouseButton1Click:Connect(function()
+        if isFetching then
+            gui.StatusLabel.Text = "⏳ Please wait..."
             gui.StatusLabel.TextColor3 = COLOR_SCHEME.Warning
             return
         end
         
-        if amount < 1 or amount > 10 then
-            gui.StatusLabel.Text = "⚠️ Amount 1-10"
+        local itemName = gui.ItemInput.Text:gsub("^%s*(.-)%s*$", "%1") -- trim
+        local amountText = gui.AmountInput.Text
+        
+        -- Validate inputs
+        local validName, nameResult = validateItemName(itemName)
+        if not validName then
+            gui.StatusLabel.Text = "⚠️ " .. nameResult
             gui.StatusLabel.TextColor3 = COLOR_SCHEME.Warning
             return
         end
+        itemName = nameResult
+        
+        local validAmount, amountResult = validateAmount(amountText)
+        if not validAmount then
+            gui.StatusLabel.Text = "⚠️ " .. amountResult
+            gui.StatusLabel.TextColor3 = COLOR_SCHEME.Warning
+            return
+        end
+        local amount = amountResult
+        
+        isFetching = true
         
         -- Show loading state
-        gui.StatusLabel.Text = "🔄 Fetching..."
+        gui.StatusLabel.Text = "🔄 Fetching predictions..."
         gui.StatusLabel.TextColor3 = COLOR_SCHEME.Accent
-        gui.FetchButton.Text = "LOADING..."
+        gui.FetchButton.Text = "⏳ LOADING..."
         
-        local loadingSpinner, connection = createLoadingSpinner(gui.MainContainer)
+        local loadingSpinner, spinnerConnection = createLoadingSpinner(gui.MainContainer)
         
         -- Fetch data asynchronously
-        spawn(function()
-            local data, error = fetchStockPredictions(itemName, amount)
+        task.spawn(function()
+            local data, error, fromCache = fetchStockPredictions(itemName, amount)
             
-            if loadingSpinner then
+            -- Cleanup loading UI
+            if loadingSpinner and loadingSpinner.Parent then
                 loadingSpinner:Destroy()
             end
-            if connection then
-                connection:Disconnect()
-            end
             
+            isFetching = false
             gui.FetchButton.Text = "🔍 FETCH"
             
             if data then
-                displayResults(gui, data)
+                displayResults(gui, data, fromCache)
             else
-                gui.StatusLabel.Text = "❌ " .. tostring(error)
+                gui.StatusLabel.Text = "❌ " .. tostring(error or "Unknown error")
                 gui.StatusLabel.TextColor3 = COLOR_SCHEME.Error
             end
         end)
-    end)
+    end))
     
-    -- Close button event
-    gui.CloseButton.MouseButton1Click:Connect(function()
-        if gui.ScreenGui then
+    -- Close button event (with cleanup)
+    trackConnection(gui.CloseButton.MouseButton1Click:Connect(function()
+        cleanupConnections()
+        if gui.ScreenGui and gui.ScreenGui.Parent then
             gui.ScreenGui:Destroy()
         end
-    end)
+    end))
+    
+    -- Auto-cleanup on player leaving
+    trackConnection(player.CharacterRemoving:Connect(function()
+        cleanupConnections()
+    end))
 end
 
--- Khởi chạy an toàn
+-- ========================================
+-- EXECUTION
+-- ========================================
+
 local success, err = pcall(main)
 if not success then
     warn("Script execution failed: " .. tostring(err))
 end
+
+print("✅ Stock Predictions Script Loaded Successfully!")
+print("📊 Features: Cache system, Retry logic, Error handling, Memory leak fixes")
