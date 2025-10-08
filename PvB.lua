@@ -814,4 +814,4 @@ if not success then
 end
 
 print("✅ Stock Predictions Script Loaded Successfully!")
-print("📊 Features: Cache system, Retry logic, Error handling, Memory leak fixes")
+print("Thanks!!!")
