@@ -1,6 +1,4 @@
--- Stock Predictions API Script for Executor
--- Plants Vs Brainrot Stock Predictions - FIXED & IMPROVED VERSION
--- All bugs fixed + Performance optimizations + Better error handling
+
 
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -804,9 +802,7 @@ local function main()
     end))
 end
 
--- ========================================
--- EXECUTION
--- ========================================
+
 
 local success, err = pcall(main)
 if not success then
@@ -814,4 +810,5 @@ if not success then
 end
 
 print("✅ Stock Predictions Script Loaded Successfully!")
-print("Thanks!!!")
+print("❌ Xeno, Solara, jjsploit is not supported!")
+print("❤ Thanks!!!")
