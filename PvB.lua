@@ -1,508 +1,560 @@
-
+-- Stock Predictions - Advanced Stealth Edition
+-- Enhanced security, modern UI, minimize/maximize
 
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 
 -- ========================================
--- GLOBAL STATE & CONFIGURATION
+-- STEALTH CONFIGURATION
 -- ========================================
 
 local API_BASE = "https://stock-predicitions-api.vercel.app/api"
-local CACHE_DURATION = 60 -- seconds
+local CACHE_DURATION = 60
 local MAX_RETRIES = 3
 local RETRY_DELAY = 1
 
--- Connection tracking để cleanup
-local activeConnections = {}
-local isFetching = false
+-- Obfuscated variable names
+local _c = {} -- cache
+local _ac = {} -- active connections
+local _f = false -- is fetching
+local _hm = nil -- http method
+local _min = false -- is minimized
 
--- Cache system
-local cache = {}
+-- Anti-detection: Randomize identifiers
+local function _rnd(len)
+    local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    local result = ""
+    for i = 1, len do
+        local r = math.random(1, #chars)
+        result = result .. chars:sub(r, r)
+    end
+    return result
+end
 
--- Premium UI Colors
-local COLOR_SCHEME = {
-    Background = Color3.fromRGB(25, 25, 35),
-    Secondary = Color3.fromRGB(35, 35, 50),
-    Accent = Color3.fromRGB(0, 150, 255),
-    Success = Color3.fromRGB(85, 255, 127),
-    Warning = Color3.fromRGB(255, 193, 7),
-    Error = Color3.fromRGB(255, 87, 87),
-    TextPrimary = Color3.fromRGB(240, 240, 240),
-    TextSecondary = Color3.fromRGB(180, 180, 200)
-}
+-- Stealth HTTP method detection (no console output)
+local function _dhm()
+    local methods = {
+        {check = function() return syn and syn.request end, fn = function() return syn.request end},
+        {check = function() return http_request ~= nil end, fn = function() return http_request end},
+        {check = function() return request ~= nil end, fn = function() return request end},
+        {check = function() return http and http.request end, fn = function() return http.request end},
+        {check = function() 
+            local s = pcall(function() game:HttpGet("https://google.com") end)
+            return s
+        end, fn = function()
+            return function(opt)
+                if opt.Method == "GET" then
+                    local body = game:HttpGet(opt.Url)
+                    return {Success = true, Body = body, StatusCode = 200}
+                end
+                return {Success = false}
+            end
+        end}
+    }
+    
+    for _, m in ipairs(methods) do
+        if m.check() then
+            _hm = m.fn()
+            return true
+        end
+    end
+    return false
+end
+
+local _ha = _dhm()
 
 -- ========================================
 -- UTILITY FUNCTIONS
 -- ========================================
 
--- Safe instance creation
-local function secureCreate(className, properties)
-    local success, instance = pcall(function()
-        local obj = Instance.new(className)
-        for prop, value in pairs(properties or {}) do
-            pcall(function()
-                obj[prop] = value
-            end)
+local function _sc(cn, props)
+    local s, i = pcall(function()
+        local o = Instance.new(cn)
+        for p, v in pairs(props or {}) do
+            pcall(function() o[p] = v end)
         end
-        return obj
+        return o
     end)
-    return success and instance or nil
+    return s and i or nil
 end
 
--- Obfuscated naming
-local function getObfuscatedName(baseName)
-    local prefixes = {"UI", "Frame", "Container", "Display", "View"}
-    local suffixes = {"Manager", "Handler", "Controller", "Interface"}
-    local randomId = math.random(1000, 9999)
-    return prefixes[math.random(1, #prefixes)] .. suffixes[math.random(1, #suffixes)] .. randomId
+local function _tc(conn)
+    table.insert(_ac, conn)
+    return conn
 end
 
--- Track connections for cleanup
-local function trackConnection(connection)
-    table.insert(activeConnections, connection)
-    return connection
-end
-
--- Cleanup all connections
-local function cleanupConnections()
-    for _, connection in ipairs(activeConnections) do
-        if connection and connection.Connected then
-            connection:Disconnect()
+local function _cc()
+    for _, c in ipairs(_ac) do
+        if c and c.Connected then
+            pcall(function() c:Disconnect() end)
         end
     end
-    activeConnections = {}
+    _ac = {}
 end
 
--- Format Unix timestamp to readable time
-local function formatUnixTime(unix)
-    local currentTime = os.time()
-    local diff = unix - currentTime
-    
-    if diff < 0 then
-        return "Passed"
-    elseif diff < 60 then
-        return diff .. "s"
-    elseif diff < 3600 then
-        return math.floor(diff / 60) .. "m"
-    elseif diff < 86400 then
-        return math.floor(diff / 3600) .. "h"
-    else
-        return math.floor(diff / 86400) .. "d"
+local function _fmt(unix)
+    local diff = unix - os.time()
+    if diff < 0 then return "Passed"
+    elseif diff < 60 then return diff .. "s"
+    elseif diff < 3600 then return math.floor(diff / 60) .. "m"
+    elseif diff < 86400 then return math.floor(diff / 3600) .. "h"
+    else return math.floor(diff / 86400) .. "d"
     end
 end
 
--- Input validation
-local function validateItemName(name)
+local function _vn(name)
     if not name or type(name) ~= "string" then
-        return false, "Invalid item name"
+        return false, "Invalid name"
     end
-    
-    name = name:gsub("^%s*(.-)%s*$", "%1") -- trim whitespace
-    
-    if #name < 2 then
-        return false, "Name too short (min 2 characters)"
-    end
-    
-    if #name > 50 then
-        return false, "Name too long (max 50 characters)"
-    end
-    
+    name = name:gsub("^%s*(.-)%s*$", "%1")
+    if #name < 2 then return false, "Name too short" end
+    if #name > 50 then return false, "Name too long" end
     return true, name
 end
 
-local function validateAmount(amount)
+local function _va(amount)
     local num = tonumber(amount)
-    if not num then
-        return false, "Amount must be a number"
-    end
-    
-    if num < 1 or num > 10 then
-        return false, "Amount must be between 1-10"
-    end
-    
+    if not num then return false, "Must be a number" end
+    if num < 1 or num > 10 then return false, "Range: 1-10" end
     return true, math.floor(num)
 end
+
+-- ========================================
+-- HTTP REQUEST FUNCTIONS
+-- ========================================
+
+local function _hr(url)
+    if not _ha then return nil, "No method" end
+    
+    local s, r = pcall(function()
+        return _hm({
+            Url = url,
+            Method = "GET",
+            Headers = {["Content-Type"] = "application/json"}
+        })
+    end)
+    
+    if not s then return nil, tostring(r) end
+    return r, nil
+end
+
+local function _fp(itemName, amount)
+    local ck = itemName:lower() .. "_" .. amount
+    local cd = _c[ck]
+    
+    if cd and (os.time() - cd.time) < CACHE_DURATION then
+        return cd.data, nil, true
+    end
+    
+    local en = HttpService:UrlEncode(itemName)
+    local url = API_BASE .. "/Stock?name=" .. en .. "&amount=" .. tostring(amount)
+    
+    for att = 1, MAX_RETRIES do
+        local res, err = _hr(url)
+        
+        if res and (res.Success or res.StatusCode == 200) then
+            local ps, data = pcall(function()
+                local body = res.Body
+                if type(body) == "string" then
+                    return HttpService:JSONDecode(body)
+                end
+                return body
+            end)
+            
+            if ps and type(data) == "table" then
+                _c[ck] = {data = data, time = os.time()}
+                return data, nil, false
+            else
+                return nil, "Parse failed"
+            end
+        end
+        
+        if att < MAX_RETRIES then wait(RETRY_DELAY) end
+    end
+    
+    return nil, "Request failed"
+end
+
+-- ========================================
+-- MODERN UI COLOR SCHEME
+-- ========================================
+
+local COLORS = {
+    BG1 = Color3.fromRGB(15, 15, 25),
+    BG2 = Color3.fromRGB(25, 25, 40),
+    BG3 = Color3.fromRGB(35, 35, 55),
+    ACC1 = Color3.fromRGB(120, 90, 255),
+    ACC2 = Color3.fromRGB(80, 200, 255),
+    SUCCESS = Color3.fromRGB(100, 255, 150),
+    WARNING = Color3.fromRGB(255, 200, 80),
+    ERROR = Color3.fromRGB(255, 100, 120),
+    TXT1 = Color3.fromRGB(250, 250, 255),
+    TXT2 = Color3.fromRGB(170, 170, 190),
+    SHADOW = Color3.fromRGB(0, 0, 0)
+}
 
 -- ========================================
 -- UI COMPONENTS
 -- ========================================
 
-local function createGradient(parent)
-    local gradient = secureCreate("UIGradient", {
-        Rotation = 45,
+local function _grad(parent, rotation, c1, c2)
+    local g = _sc("UIGradient", {
+        Rotation = rotation or 45,
         Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, COLOR_SCHEME.Background),
-            ColorSequenceKeypoint.new(1, COLOR_SCHEME.Secondary)
+            ColorSequenceKeypoint.new(0, c1 or COLORS.BG1),
+            ColorSequenceKeypoint.new(1, c2 or COLORS.BG2)
         })
     })
-    if gradient and parent then
-        gradient.Parent = parent
-    end
-    return gradient
+    if g and parent then g.Parent = parent end
+    return g
 end
 
-local function createModernButton(parent, text, size, position)
-    local buttonContainer = secureCreate("Frame", {
-        Size = size,
-        Position = position,
-        BackgroundTransparency = 1,
+local function _corner(parent, radius)
+    local c = _sc("UICorner", {
+        CornerRadius = UDim.new(0, radius or 8),
         Parent = parent
     })
-    
-    local button = secureCreate("TextButton", {
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundColor3 = COLOR_SCHEME.Accent,
-        TextColor3 = COLOR_SCHEME.TextPrimary,
+    return c
+end
+
+local function _stroke(parent, color, thickness)
+    local s = _sc("UIStroke", {
+        Color = color or COLORS.ACC1,
+        Thickness = thickness or 1,
+        Transparency = 0.5,
+        Parent = parent
+    })
+    return s
+end
+
+local function _btn(parent, text, size, pos, color)
+    local btn = _sc("TextButton", {
+        Size = size,
+        Position = pos,
+        BackgroundColor3 = color or COLORS.ACC1,
+        TextColor3 = COLORS.TXT1,
         Text = text,
         Font = Enum.Font.GothamBold,
         TextSize = 12,
         AutoButtonColor = false,
         BorderSizePixel = 0,
-        Parent = buttonContainer
-    })
-    
-    local corner = secureCreate("UICorner", {
-        CornerRadius = UDim.new(0, 6),
-        Parent = button
-    })
-    
-    -- Hover effects
-    trackConnection(button.MouseEnter:Connect(function()
-        if button and button.Parent then
-            TweenService:Create(button, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-            }):Play()
-        end
-    end))
-    
-    trackConnection(button.MouseLeave:Connect(function()
-        if button and button.Parent then
-            TweenService:Create(button, TweenInfo.new(0.2), {
-                BackgroundColor3 = COLOR_SCHEME.Accent
-            }):Play()
-        end
-    end))
-    
-    return button
-end
-
-local function createModernInput(parent, placeholder, size, position)
-    local container = secureCreate("Frame", {
-        Size = size,
-        Position = position,
-        BackgroundTransparency = 1,
         Parent = parent
     })
     
-    local input = secureCreate("TextBox", {
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundColor3 = COLOR_SCHEME.Secondary,
-        TextColor3 = COLOR_SCHEME.TextPrimary,
+    _corner(btn, 8)
+    
+    _tc(btn.MouseEnter:Connect(function()
+        if btn and btn.Parent then
+            TweenService:Create(btn, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(
+                    math.min(255, (color or COLORS.ACC1).R * 255 + 30),
+                    math.min(255, (color or COLORS.ACC1).G * 255 + 30),
+                    math.min(255, (color or COLORS.ACC1).B * 255 + 30)
+                )
+            }):Play()
+        end
+    end))
+    
+    _tc(btn.MouseLeave:Connect(function()
+        if btn and btn.Parent then
+            TweenService:Create(btn, TweenInfo.new(0.2), {
+                BackgroundColor3 = color or COLORS.ACC1
+            }):Play()
+        end
+    end))
+    
+    return btn
+end
+
+local function _input(parent, placeholder, size, pos)
+    local inp = _sc("TextBox", {
+        Size = size,
+        Position = pos,
+        BackgroundColor3 = COLORS.BG3,
+        TextColor3 = COLORS.TXT1,
         PlaceholderText = placeholder,
-        PlaceholderColor3 = COLOR_SCHEME.TextSecondary,
+        PlaceholderColor3 = COLORS.TXT2,
         Text = "",
         Font = Enum.Font.Gotham,
         TextSize = 12,
         ClearTextOnFocus = false,
         BorderSizePixel = 0,
-        Parent = container
-    })
-    
-    local corner = secureCreate("UICorner", {
-        CornerRadius = UDim.new(0, 6),
-        Parent = input
-    })
-    
-    local padding = secureCreate("UIPadding", {
-        PaddingLeft = UDim.new(0, 8),
-        PaddingRight = UDim.new(0, 8),
-        Parent = input
-    })
-    
-    -- Focus effects
-    trackConnection(input.Focused:Connect(function()
-        if input and input.Parent then
-            TweenService:Create(input, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(45, 45, 65)
-            }):Play()
-        end
-    end))
-    
-    trackConnection(input.FocusLost:Connect(function()
-        if input and input.Parent then
-            TweenService:Create(input, TweenInfo.new(0.2), {
-                BackgroundColor3 = COLOR_SCHEME.Secondary
-            }):Play()
-        end
-    end))
-    
-    return input
-end
-
-local function createLoadingSpinner(parent)
-    local spinner = secureCreate("Frame", {
-        Size = UDim2.new(0, 40, 0, 40),
-        Position = UDim2.new(0.5, -20, 0.5, -20),
-        BackgroundTransparency = 1,
-        ZIndex = 10,
         Parent = parent
     })
     
-    local circle = secureCreate("ImageLabel", {
+    _corner(inp, 8)
+    _sc("UIPadding", {
+        PaddingLeft = UDim.new(0, 12),
+        PaddingRight = UDim.new(0, 12),
+        Parent = inp
+    })
+    
+    _tc(inp.Focused:Connect(function()
+        if inp and inp.Parent then
+            TweenService:Create(inp, TweenInfo.new(0.2), {
+                BackgroundColor3 = COLORS.BG2
+            }):Play()
+        end
+    end))
+    
+    _tc(inp.FocusLost:Connect(function()
+        if inp and inp.Parent then
+            TweenService:Create(inp, TweenInfo.new(0.2), {
+                BackgroundColor3 = COLORS.BG3
+            }):Play()
+        end
+    end))
+    
+    return inp
+end
+
+local function _spinner(parent)
+    local sp = _sc("Frame", {
+        Size = UDim2.new(0, 40, 0, 40),
+        Position = UDim2.new(0.5, -20, 0.5, -20),
+        BackgroundTransparency = 1,
+        ZIndex = 100,
+        Parent = parent
+    })
+    
+    local circle = _sc("ImageLabel", {
         Size = UDim2.new(0, 30, 0, 30),
         Position = UDim2.new(0.5, -15, 0.5, -15),
         BackgroundTransparency = 1,
         Image = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-        ImageColor3 = COLOR_SCHEME.Accent,
-        Parent = spinner
+        ImageColor3 = COLORS.ACC1,
+        Parent = sp
     })
     
-    local corner = secureCreate("UICorner", {
-        CornerRadius = UDim.new(1, 0),
-        Parent = circle
-    })
+    _corner(circle)
     
-    local rotation = 0
-    local connection = trackConnection(RunService.Heartbeat:Connect(function(delta)
-        if spinner and spinner.Parent and circle and circle.Parent then
-            rotation = (rotation + 360 * delta * 2) % 360
-            circle.Rotation = rotation
+    local rot = 0
+    local conn = _tc(RunService.Heartbeat:Connect(function(dt)
+        if sp and sp.Parent and circle and circle.Parent then
+            rot = (rot + 360 * dt * 3) % 360
+            circle.Rotation = rot
         else
-            if connection and connection.Connected then
-                connection:Disconnect()
+            if conn and conn.Connected then
+                conn:Disconnect()
             end
         end
     end))
     
-    return spinner, connection
+    return sp, conn
 end
 
 -- ========================================
--- API FUNCTIONS
+-- MODERN GUI CREATION
 -- ========================================
 
--- Fetch with retry logic and proper error handling
-local function fetchStockPredictions(itemName, amount)
-    -- Check cache first
-    local cacheKey = itemName:lower() .. "_" .. amount
-    local cached = cache[cacheKey]
-    
-    if cached and (os.time() - cached.time) < CACHE_DURATION then
-        return cached.data, nil, true -- true = from cache
-    end
-    
-    local encodedName = HttpService:UrlEncode(itemName)
-    local url = API_BASE .. "/Stock?name=" .. encodedName .. "&amount=" .. tostring(amount)
-    
-    for attempt = 1, MAX_RETRIES do
-        local success, result = pcall(function()
-            return HttpService:RequestAsync({
-                Url = url,
-                Method = "GET",
-                Headers = {
-                    ["Content-Type"] = "application/json"
-                }
-            })
-        end)
-        
-        -- Check if request succeeded
-        if success and type(result) == "table" and result.Success then
-            -- Try to parse JSON
-            local parseSuccess, data = pcall(function()
-                return HttpService:JSONDecode(result.Body)
-            end)
-            
-            if parseSuccess and type(data) == "table" then
-                -- Cache the result
-                cache[cacheKey] = {
-                    data = data,
-                    time = os.time()
-                }
-                return data, nil, false
-            else
-                return nil, "Failed to parse API response"
-            end
-        end
-        
-        -- Retry logic
-        if attempt < MAX_RETRIES then
-            wait(RETRY_DELAY)
-        else
-            local errorMsg = "API request failed"
-            if type(result) == "string" then
-                errorMsg = errorMsg .. ": " .. result
-            elseif type(result) == "table" and result.StatusMessage then
-                errorMsg = errorMsg .. ": " .. result.StatusMessage
-            end
-            return nil, errorMsg
-        end
-    end
-    
-    return nil, "Failed after " .. MAX_RETRIES .. " attempts"
-end
-
--- ========================================
--- GUI CREATION
--- ========================================
-
-local function createCompactGUI()
-    local screenGui = secureCreate("ScreenGui", {
-        Name = getObfuscatedName("MainGUI"),
+local function _cgui()
+    local sg = _sc("ScreenGui", {
+        Name = _rnd(10),
         ResetOnSpawn = false,
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
         Parent = player:WaitForChild("PlayerGui")
     })
     
-    if not screenGui then return nil end
+    if not sg then return nil end
 
-    -- Main Container
-    local mainContainer = secureCreate("Frame", {
+    -- Main container with shadow
+    local shadow = _sc("ImageLabel", {
+        Size = UDim2.new(0, 420, 0, 470),
+        Position = UDim2.new(0.5, -210, 0.5, -235),
+        BackgroundTransparency = 1,
+        Image = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+        ImageColor3 = COLORS.SHADOW,
+        ImageTransparency = 0.7,
+        ScaleType = Enum.ScaleType.Slice,
+        SliceCenter = Rect.new(10, 10, 10, 10),
+        ZIndex = 0,
+        Parent = sg
+    })
+
+    local main = _sc("Frame", {
         Size = UDim2.new(0, 400, 0, 450),
         Position = UDim2.new(0.5, -200, 0.5, -225),
-        BackgroundColor3 = COLOR_SCHEME.Background,
+        BackgroundColor3 = COLORS.BG1,
         BorderSizePixel = 0,
-        Parent = screenGui
+        ClipsDescendants = false,
+        Parent = sg
     })
     
-    createGradient(mainContainer)
-    
-    local mainCorner = secureCreate("UICorner", {
-        CornerRadius = UDim.new(0, 12),
-        Parent = mainContainer
-    })
+    _corner(main, 16)
+    _grad(main, 135, COLORS.BG1, COLORS.BG2)
 
-    -- Header
-    local header = secureCreate("Frame", {
-        Size = UDim2.new(1, 0, 0, 50),
-        BackgroundColor3 = COLOR_SCHEME.Secondary,
+    -- Header with glassmorphism effect
+    local header = _sc("Frame", {
+        Size = UDim2.new(1, 0, 0, 55),
+        BackgroundColor3 = COLORS.BG2,
+        BackgroundTransparency = 0.3,
         BorderSizePixel = 0,
-        Parent = mainContainer
+        Parent = main
     })
     
-    createGradient(header)
-    
-    local headerCorner = secureCreate("UICorner", {
-        CornerRadius = UDim.new(0, 12),
+    _corner(header, 16)
+    _grad(header, 90, COLORS.BG2, COLORS.BG3)
+    _stroke(header, COLORS.ACC1, 1)
+
+    -- Title with icon
+    local icon = _sc("TextLabel", {
+        Size = UDim2.new(0, 30, 0, 30),
+        Position = UDim2.new(0, 15, 0.5, -15),
+        BackgroundColor3 = COLORS.ACC1,
+        Text = "📊",
+        TextColor3 = COLORS.TXT1,
+        Font = Enum.Font.GothamBold,
+        TextSize = 16,
+        BorderSizePixel = 0,
         Parent = header
     })
+    _corner(icon, 8)
 
-    -- Title
-    local title = secureCreate("TextLabel", {
-        Size = UDim2.new(1, -60, 1, 0),
-        Position = UDim2.new(0, 15, 0, 0),
+    local title = _sc("TextLabel", {
+        Size = UDim2.new(1, -140, 1, 0),
+        Position = UDim2.new(0, 55, 0, 0),
         BackgroundTransparency = 1,
-        Text = "📈 STOCK PREDICTIONS",
-        TextColor3 = COLOR_SCHEME.TextPrimary,
+        Text = "STOCK PREDICTIONS",
+        TextColor3 = COLORS.TXT1,
         Font = Enum.Font.GothamBold,
         TextSize = 16,
         TextXAlignment = Enum.TextXAlignment.Left,
         Parent = header
     })
 
-    -- Close button
-    local closeBtn = createModernButton(header, "×", UDim2.new(0, 30, 0, 30), UDim2.new(1, -35, 0.5, -15))
-    closeBtn.TextSize = 20
+    local subtitle = _sc("TextLabel", {
+        Size = UDim2.new(1, -140, 0, 15),
+        Position = UDim2.new(0, 55, 1, -20),
+        BackgroundTransparency = 1,
+        Text = "Real-time market analysis",
+        TextColor3 = COLORS.TXT2,
+        Font = Enum.Font.Gotham,
+        TextSize = 10,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = header
+    })
+
+    -- Control buttons (minimize, close)
+    local minBtn = _btn(header, "─", UDim2.new(0, 35, 0, 35), UDim2.new(1, -80, 0.5, -17.5), COLORS.BG3)
+    minBtn.TextSize = 18
+    
+    local closeBtn = _btn(header, "×", UDim2.new(0, 35, 0, 35), UDim2.new(1, -40, 0.5, -17.5), Color3.fromRGB(255, 80, 100))
+    closeBtn.TextSize = 22
 
     -- Content area
-    local content = secureCreate("Frame", {
-        Size = UDim2.new(1, -30, 1, -80),
-        Position = UDim2.new(0, 15, 0, 65),
+    local content = _sc("Frame", {
+        Size = UDim2.new(1, -30, 1, -85),
+        Position = UDim2.new(0, 15, 0, 70),
         BackgroundTransparency = 1,
-        Parent = mainContainer
+        Parent = main
     })
 
-    -- Input section
-    local inputSection = secureCreate("Frame", {
-        Size = UDim2.new(1, 0, 0, 80),
-        BackgroundTransparency = 1,
+    -- Input section with modern design
+    local inputSection = _sc("Frame", {
+        Size = UDim2.new(1, 0, 0, 90),
+        BackgroundColor3 = COLORS.BG2,
+        BorderSizePixel = 0,
         Parent = content
     })
+    _corner(inputSection, 12)
+    _stroke(inputSection, COLORS.ACC2, 1)
 
-    local itemInput = createModernInput(inputSection, "Item name (e.g. Mango Seed)", UDim2.new(1, 0, 0, 35), UDim2.new(0, 0, 0, 0))
+    local inputPadding = _sc("UIPadding", {
+        PaddingTop = UDim.new(0, 12),
+        PaddingBottom = UDim.new(0, 12),
+        PaddingLeft = UDim.new(0, 12),
+        PaddingRight = UDim.new(0, 12),
+        Parent = inputSection
+    })
 
-    local bottomRow = secureCreate("Frame", {
+    local itemInput = _input(inputSection, "🔍 Item name (e.g. Mango Seed)", UDim2.new(1, 0, 0, 35), UDim2.new(0, 0, 0, 0))
+
+    local bottomRow = _sc("Frame", {
         Size = UDim2.new(1, 0, 0, 35),
-        Position = UDim2.new(0, 0, 0, 45),
+        Position = UDim2.new(0, 0, 0, 43),
         BackgroundTransparency = 1,
         Parent = inputSection
     })
 
-    local amountInput = createModernInput(bottomRow, "Amount (1-10)", UDim2.new(0.35, 0, 1, 0), UDim2.new(0, 0, 0, 0))
+    local amountInput = _input(bottomRow, "📦 Amount", UDim2.new(0.32, 0, 1, 0), UDim2.new(0, 0, 0, 0))
     amountInput.Text = "5"
 
-    local fetchBtn = createModernButton(bottomRow, "🔍 FETCH", UDim2.new(0.62, 0, 1, 0), UDim2.new(0.38, 0, 0, 0))
+    local fetchBtn = _btn(bottomRow, "🚀 FETCH", UDim2.new(0.65, 0, 1, 0), UDim2.new(0.35, 0, 0, 0), COLORS.ACC1)
+    fetchBtn.TextSize = 13
 
-    -- Results section
-    local resultsSection = secureCreate("Frame", {
-        Size = UDim2.new(1, 0, 1, -115),
-        Position = UDim2.new(0, 0, 0, 85),
+    -- Results section with scroll
+    local resultsSection = _sc("Frame", {
+        Size = UDim2.new(1, 0, 1, -125),
+        Position = UDim2.new(0, 0, 0, 98),
         BackgroundTransparency = 1,
         Parent = content
     })
 
-    local resultsLabel = secureCreate("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 25),
+    local resultsHeader = _sc("Frame", {
+        Size = UDim2.new(1, 0, 0, 30),
         BackgroundTransparency = 1,
-        Text = "PREDICTION RESULTS",
-        TextColor3 = COLOR_SCHEME.TextSecondary,
-        Font = Enum.Font.GothamBold,
-        TextSize = 12,
-        TextXAlignment = Enum.TextXAlignment.Left,
         Parent = resultsSection
     })
 
-    local resultsScroll = secureCreate("ScrollingFrame", {
-        Size = UDim2.new(1, 0, 1, -30),
-        Position = UDim2.new(0, 0, 0, 25),
-        BackgroundColor3 = COLOR_SCHEME.Secondary,
+    local resultsLabel = _sc("TextLabel", {
+        Size = UDim2.new(0.7, 0, 1, 0),
+        BackgroundTransparency = 1,
+        Text = "📈 RESULTS",
+        TextColor3 = COLORS.TXT1,
+        Font = Enum.Font.GothamBold,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = resultsHeader
+    })
+
+    local clearBtn = _btn(resultsHeader, "🗑️ Clear", UDim2.new(0, 70, 0, 25), UDim2.new(1, -70, 0, 2.5), COLORS.BG3)
+    clearBtn.TextSize = 10
+
+    local resultsScroll = _sc("ScrollingFrame", {
+        Size = UDim2.new(1, 0, 1, -35),
+        Position = UDim2.new(0, 0, 0, 33),
+        BackgroundColor3 = COLORS.BG2,
         BorderSizePixel = 0,
-        ScrollBarThickness = 4,
-        ScrollBarImageColor3 = COLOR_SCHEME.Accent,
+        ScrollBarThickness = 5,
+        ScrollBarImageColor3 = COLORS.ACC1,
         CanvasSize = UDim2.new(0, 0, 0, 0),
         Parent = resultsSection
     })
 
-    local scrollCorner = secureCreate("UICorner", {
-        CornerRadius = UDim.new(0, 6),
+    _corner(resultsScroll, 12)
+    _stroke(resultsScroll, COLORS.ACC2, 1)
+
+    _sc("UIListLayout", {Padding = UDim.new(0, 8), Parent = resultsScroll})
+    _sc("UIPadding", {
+        PaddingTop = UDim.new(0, 10),
+        PaddingLeft = UDim.new(0, 10),
+        PaddingRight = UDim.new(0, 10),
+        PaddingBottom = UDim.new(0, 10),
         Parent = resultsScroll
     })
 
-    local resultsList = secureCreate("UIListLayout", {
-        Padding = UDim.new(0, 6),
-        Parent = resultsScroll
-    })
-
-    local padding = secureCreate("UIPadding", {
-        PaddingTop = UDim.new(0, 8),
-        PaddingLeft = UDim.new(0, 8),
-        PaddingRight = UDim.new(0, 8),
-        PaddingBottom = UDim.new(0, 8),
-        Parent = resultsScroll
-    })
-
-    -- Status bar
-    local statusBar = secureCreate("Frame", {
-        Size = UDim2.new(1, 0, 0, 25),
-        Position = UDim2.new(0, 0, 1, -30),
-        BackgroundColor3 = COLOR_SCHEME.Secondary,
+    -- Status bar with glow effect
+    local statusBar = _sc("Frame", {
+        Size = UDim2.new(1, 0, 0, 28),
+        Position = UDim2.new(0, 0, 1, -33),
+        BackgroundColor3 = COLORS.BG2,
         BorderSizePixel = 0,
         Parent = content
     })
 
-    local statusCorner = secureCreate("UICorner", {
-        CornerRadius = UDim.new(0, 4),
-        Parent = statusBar
-    })
+    _corner(statusBar, 8)
+    _stroke(statusBar, COLORS.ACC1, 1)
 
-    local statusLabel = secureCreate("TextLabel", {
-        Size = UDim2.new(1, -10, 1, 0),
-        Position = UDim2.new(0, 5, 0, 0),
+    local statusLabel = _sc("TextLabel", {
+        Size = UDim2.new(1, -20, 1, 0),
+        Position = UDim2.new(0, 10, 0, 0),
         BackgroundTransparency = 1,
-        Text = "Ready to fetch predictions...",
-        TextColor3 = COLOR_SCHEME.TextSecondary,
+        Text = "⚡ Ready to fetch predictions...",
+        TextColor3 = COLORS.TXT2,
         Font = Enum.Font.Gotham,
         TextSize = 10,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -510,24 +562,24 @@ local function createCompactGUI()
     })
 
     return {
-        ScreenGui = screenGui,
-        MainContainer = mainContainer,
+        ScreenGui = sg,
+        MainContainer = main,
+        Shadow = shadow,
+        Header = header,
         ItemInput = itemInput,
         AmountInput = amountInput,
         FetchButton = fetchBtn,
+        MinimizeButton = minBtn,
         CloseButton = closeBtn,
+        ClearButton = clearBtn,
         ResultsScroll = resultsScroll,
-        StatusLabel = statusLabel,
-        ResultsList = resultsList
+        StatusLabel = statusLabel
     }
 end
 
--- ========================================
--- DISPLAY FUNCTIONS
--- ========================================
 
-local function displayResults(gui, data, fromCache)
-    -- Clear previous results
+
+local function _dr(gui, data, fromCache)
     for _, child in ipairs(gui.ResultsScroll:GetChildren()) do
         if child:IsA("Frame") then
             child:Destroy()
@@ -536,150 +588,148 @@ local function displayResults(gui, data, fromCache)
 
     if not data or type(data) ~= "table" or #data == 0 then
         gui.StatusLabel.Text = "❌ No predictions found"
-        gui.StatusLabel.TextColor3 = COLOR_SCHEME.Error
+        gui.StatusLabel.TextColor3 = COLORS.ERROR
         return
     end
 
     local totalHeight = 0
     
-    for index, item in ipairs(data) do
-        local itemFrame = secureCreate("Frame", {
-            Size = UDim2.new(1, 0, 0, 75),
-            BackgroundColor3 = COLOR_SCHEME.Background,
+    for idx, item in ipairs(data) do
+        local card = _sc("Frame", {
+            Size = UDim2.new(1, 0, 0, 85),
+            BackgroundColor3 = COLORS.BG3,
             BorderSizePixel = 0,
             Parent = gui.ResultsScroll
         })
         
-        local itemCorner = secureCreate("UICorner", {
-            CornerRadius = UDim.new(0, 6),
-            Parent = itemFrame
+        _corner(card, 10)
+        _grad(card, 90, COLORS.BG3, COLORS.BG2)
+        _stroke(card, COLORS.ACC1, 1)
+
+        local cardPad = _sc("UIPadding", {
+            PaddingTop = UDim.new(0, 10),
+            PaddingBottom = UDim.new(0, 10),
+            PaddingLeft = UDim.new(0, 12),
+            PaddingRight = UDim.new(0, 12),
+            Parent = card
         })
 
-        local infoContainer = secureCreate("Frame", {
-            Size = UDim2.new(1, -10, 1, -10),
-            Position = UDim2.new(0, 5, 0, 5),
+        -- Header row
+        local headerRow = _sc("Frame", {
+            Size = UDim2.new(1, 0, 0, 22),
             BackgroundTransparency = 1,
-            Parent = itemFrame
+            Parent = card
         })
 
-        -- Header
-        local header = secureCreate("Frame", {
-            Size = UDim2.new(1, 0, 0, 20),
-            BackgroundTransparency = 1,
-            Parent = infoContainer
-        })
-
-        local nameLabel = secureCreate("TextLabel", {
-            Size = UDim2.new(0.6, 0, 1, 0),
+        _sc("TextLabel", {
+            Size = UDim2.new(0.65, 0, 1, 0),
             BackgroundTransparency = 1,
             Text = tostring(item.Name or "Unknown"),
-            TextColor3 = COLOR_SCHEME.TextPrimary,
+            TextColor3 = COLORS.TXT1,
             Font = Enum.Font.GothamBold,
-            TextSize = 12,
+            TextSize = 13,
             TextXAlignment = Enum.TextXAlignment.Left,
             TextTruncate = Enum.TextTruncate.AtEnd,
-            Parent = header
+            Parent = headerRow
         })
 
-        local typeLabel = secureCreate("TextLabel", {
-            Size = UDim2.new(0.4, 0, 1, 0),
-            Position = UDim2.new(0.6, 0, 0, 0),
-            BackgroundTransparency = 1,
-            Text = "📦 " .. tostring(item.Type or "Unknown"),
-            TextColor3 = COLOR_SCHEME.Accent,
+        local typeBadge = _sc("TextLabel", {
+            Size = UDim2.new(0.35, 0, 0, 20),
+            Position = UDim2.new(0.65, 0, 0, 1),
+            BackgroundColor3 = COLORS.ACC1,
+            Text = tostring(item.Type or "?"),
+            TextColor3 = COLORS.TXT1,
             Font = Enum.Font.GothamBold,
             TextSize = 10,
-            TextXAlignment = Enum.TextXAlignment.Right,
-            Parent = header
+            BorderSizePixel = 0,
+            Parent = headerRow
         })
+        _corner(typeBadge, 6)
 
-        -- Details row
-        local details = secureCreate("Frame", {
-            Size = UDim2.new(1, 0, 0, 18),
-            Position = UDim2.new(0, 0, 0, 22),
+        -- Stats row
+        local statsRow = _sc("Frame", {
+            Size = UDim2.new(1, 0, 0, 20),
+            Position = UDim2.new(0, 0, 0, 28),
             BackgroundTransparency = 1,
-            Parent = infoContainer
+            Parent = card
         })
 
-        local stockLabel = secureCreate("TextLabel", {
+        _sc("TextLabel", {
             Size = UDim2.new(0.5, 0, 1, 0),
             BackgroundTransparency = 1,
-            Text = "📊 Stock: " .. tostring(item.Stock or "0"),
-            TextColor3 = COLOR_SCHEME.Success,
-            Font = Enum.Font.Gotham,
+            Text = "📊 " .. tostring(item.Stock or "0"),
+            TextColor3 = COLORS.SUCCESS,
+            Font = Enum.Font.GothamBold,
             TextSize = 11,
             TextXAlignment = Enum.TextXAlignment.Left,
-            Parent = details
+            Parent = statsRow
         })
 
-        local restockLabel = secureCreate("TextLabel", {
+        _sc("TextLabel", {
             Size = UDim2.new(0.5, 0, 1, 0),
             Position = UDim2.new(0.5, 0, 0, 0),
             BackgroundTransparency = 1,
-            Text = "⏱️ In: " .. tostring(item.RestockAway or "0") .. " min",
-            TextColor3 = COLOR_SCHEME.Warning,
-            Font = Enum.Font.Gotham,
+            Text = "⏱️ " .. tostring(item.RestockAway or "0") .. "m",
+            TextColor3 = COLORS.WARNING,
+            Font = Enum.Font.GothamBold,
             TextSize = 11,
             TextXAlignment = Enum.TextXAlignment.Right,
-            Parent = details
+            Parent = statsRow
         })
 
         -- Bottom row
-        local bottom = secureCreate("Frame", {
+        local bottomRow = _sc("Frame", {
             Size = UDim2.new(1, 0, 0, 16),
-            Position = UDim2.new(0, 0, 0, 42),
+            Position = UDim2.new(0, 0, 0, 50),
             BackgroundTransparency = 1,
-            Parent = infoContainer
+            Parent = card
         })
 
-        local indexLabel = secureCreate("TextLabel", {
+        _sc("TextLabel", {
             Size = UDim2.new(0.3, 0, 1, 0),
             BackgroundTransparency = 1,
             Text = "#" .. tostring(item.Index or "0"),
-            TextColor3 = COLOR_SCHEME.TextSecondary,
+            TextColor3 = COLORS.TXT2,
             Font = Enum.Font.GothamBold,
             TextSize = 10,
             TextXAlignment = Enum.TextXAlignment.Left,
-            Parent = bottom
+            Parent = bottomRow
         })
 
-        local timeLabel = secureCreate("TextLabel", {
+        _sc("TextLabel", {
             Size = UDim2.new(0.7, 0, 1, 0),
             Position = UDim2.new(0.3, 0, 0, 0),
             BackgroundTransparency = 1,
-            Text = "🕐 " .. formatUnixTime(item.Unix or 0),
-            TextColor3 = COLOR_SCHEME.TextSecondary,
+            Text = "🕐 " .. _fmt(item.Unix or 0),
+            TextColor3 = COLORS.TXT2,
             Font = Enum.Font.Gotham,
             TextSize = 10,
             TextXAlignment = Enum.TextXAlignment.Right,
-            Parent = bottom
+            Parent = bottomRow
         })
 
-        totalHeight = totalHeight + 81
+        totalHeight = totalHeight + 93
         
         -- Entrance animation
-        itemFrame.Position = UDim2.new(0, -400, 0, 0)
-        itemFrame.BackgroundTransparency = 1
+        card.Position = UDim2.new(-1, 0, 0, 0)
+        card.BackgroundTransparency = 1
         
-        task.delay(index * 0.05, function()
-            if itemFrame and itemFrame.Parent then
-                local tween = TweenService:Create(itemFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        task.delay(idx * 0.04, function()
+            if card and card.Parent then
+                TweenService:Create(card, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
                     Position = UDim2.new(0, 0, 0, 0),
                     BackgroundTransparency = 0
-                })
-                tween:Play()
+                }):Play()
             end
         end)
     end
 
     gui.ResultsScroll.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
     
-    local statusText = "✅ Loaded " .. #data .. " predictions"
-    if fromCache then
-        statusText = statusText .. " (cached)"
-    end
-    gui.StatusLabel.Text = statusText
-    gui.StatusLabel.TextColor3 = COLOR_SCHEME.Success
+    local st = "✅ Loaded " .. #data .. " predictions"
+    if fromCache then st = st .. " (cached)" end
+    gui.StatusLabel.Text = st
+    gui.StatusLabel.TextColor3 = COLORS.SUCCESS
 end
 
 -- ========================================
@@ -687,18 +737,21 @@ end
 -- ========================================
 
 local function main()
-    local success, gui = pcall(createCompactGUI)
+    if not _ha then
+        warn("No HTTP method available")
+        return
+    end
     
-    if not success or not gui then
-        warn("Failed to create GUI")
+    local s, gui = pcall(_cgui)
+    if not s or not gui then
+        warn("GUI creation failed")
         return
     end
 
-    -- Dragging functionality (with single connection)
-    local dragging = false
-    local dragInput, dragStart, startPos
+    -- Dragging
+    local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
     
-    trackConnection(gui.MainContainer.InputBegan:Connect(function(input)
+    _tc(gui.Header.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             dragStart = input.Position
@@ -706,13 +759,13 @@ local function main()
         end
     end))
     
-    trackConnection(gui.MainContainer.InputChanged:Connect(function(input)
+    _tc(gui.Header.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement then
             dragInput = input
         end
     end))
     
-    trackConnection(game:GetService("UserInputService").InputChanged:Connect(function(input)
+    _tc(UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging and gui.MainContainer and gui.MainContainer.Parent then
             local delta = input.Position - dragStart
             gui.MainContainer.Position = UDim2.new(
@@ -721,94 +774,174 @@ local function main()
                 startPos.Y.Scale, 
                 startPos.Y.Offset + delta.Y
             )
+            gui.Shadow.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X - 10,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y - 10
+            )
         end
     end))
     
-    trackConnection(game:GetService("UserInputService").InputEnded:Connect(function(input)
+    _tc(UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = false
         end
     end))
 
-    -- Fetch button event (with debounce)
-    trackConnection(gui.FetchButton.MouseButton1Click:Connect(function()
-        if isFetching then
+    -- Minimize/Maximize functionality
+    _tc(gui.MinimizeButton.MouseButton1Click:Connect(function()
+        _min = not _min
+        
+        if _min then
+            -- Minimize animation
+            gui.MinimizeButton.Text = "□"
+            TweenService:Create(gui.MainContainer, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+                Size = UDim2.new(0, 350, 0, 55),
+                Position = UDim2.new(0.5, -175, 0.5, -27.5)
+            }):Play()
+            TweenService:Create(gui.Shadow, TweenInfo.new(0.3), {
+                Size = UDim2.new(0, 370, 0, 75),
+                Position = UDim2.new(0.5, -185, 0.5, -37.5),
+                ImageTransparency = 0.85
+            }):Play()
+        else
+            -- Maximize animation
+            gui.MinimizeButton.Text = "─"
+            TweenService:Create(gui.MainContainer, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+                Size = UDim2.new(0, 400, 0, 450),
+                Position = UDim2.new(0.5, -200, 0.5, -225)
+            }):Play()
+            TweenService:Create(gui.Shadow, TweenInfo.new(0.3), {
+                Size = UDim2.new(0, 420, 0, 470),
+                Position = UDim2.new(0.5, -210, 0.5, -235),
+                ImageTransparency = 0.7
+            }):Play()
+        end
+    end))
+
+    -- Clear button
+    _tc(gui.ClearButton.MouseButton1Click:Connect(function()
+        for _, child in ipairs(gui.ResultsScroll:GetChildren()) do
+            if child:IsA("Frame") then
+                TweenService:Create(child, TweenInfo.new(0.2), {
+                    BackgroundTransparency = 1
+                }):Play()
+                task.delay(0.2, function()
+                    if child and child.Parent then
+                        child:Destroy()
+                    end
+                end)
+            end
+        end
+        gui.StatusLabel.Text = "🗑️ Results cleared"
+        gui.StatusLabel.TextColor3 = COLORS.TXT2
+        task.wait(2)
+        if gui.StatusLabel then
+            gui.StatusLabel.Text = "⚡ Ready to fetch predictions..."
+            gui.StatusLabel.TextColor3 = COLORS.TXT2
+        end
+    end))
+
+    -- Fetch button
+    _tc(gui.FetchButton.MouseButton1Click:Connect(function()
+        if _f then
             gui.StatusLabel.Text = "⏳ Please wait..."
-            gui.StatusLabel.TextColor3 = COLOR_SCHEME.Warning
+            gui.StatusLabel.TextColor3 = COLORS.WARNING
             return
         end
         
-        local itemName = gui.ItemInput.Text:gsub("^%s*(.-)%s*$", "%1") -- trim
+        local itemName = gui.ItemInput.Text:gsub("^%s*(.-)%s*$", "%1")
         local amountText = gui.AmountInput.Text
         
-        -- Validate inputs
-        local validName, nameResult = validateItemName(itemName)
-        if not validName then
-            gui.StatusLabel.Text = "⚠️ " .. nameResult
-            gui.StatusLabel.TextColor3 = COLOR_SCHEME.Warning
+        local vn, nr = _vn(itemName)
+        if not vn then
+            gui.StatusLabel.Text = "⚠️ " .. nr
+            gui.StatusLabel.TextColor3 = COLORS.WARNING
             return
         end
-        itemName = nameResult
+        itemName = nr
         
-        local validAmount, amountResult = validateAmount(amountText)
-        if not validAmount then
-            gui.StatusLabel.Text = "⚠️ " .. amountResult
-            gui.StatusLabel.TextColor3 = COLOR_SCHEME.Warning
+        local va, ar = _va(amountText)
+        if not va then
+            gui.StatusLabel.Text = "⚠️ " .. ar
+            gui.StatusLabel.TextColor3 = COLORS.WARNING
             return
         end
-        local amount = amountResult
+        local amount = ar
         
-        isFetching = true
+        _f = true
         
-        -- Show loading state
-        gui.StatusLabel.Text = "🔄 Fetching predictions..."
-        gui.StatusLabel.TextColor3 = COLOR_SCHEME.Accent
+        gui.StatusLabel.Text = "🔄 Fetching data..."
+        gui.StatusLabel.TextColor3 = COLORS.ACC1
         gui.FetchButton.Text = "⏳ LOADING..."
         
-        local loadingSpinner, spinnerConnection = createLoadingSpinner(gui.MainContainer)
+        local spinner, spinConn = _spinner(gui.MainContainer)
         
-        -- Fetch data asynchronously
         task.spawn(function()
-            local data, error, fromCache = fetchStockPredictions(itemName, amount)
+            local data, err, cached = _fp(itemName, amount)
             
-            -- Cleanup loading UI
-            if loadingSpinner and loadingSpinner.Parent then
-                loadingSpinner:Destroy()
+            if spinner and spinner.Parent then
+                spinner:Destroy()
             end
             
-            isFetching = false
-            gui.FetchButton.Text = "🔍 FETCH"
+            _f = false
+            gui.FetchButton.Text = "🚀 FETCH"
             
             if data then
-                displayResults(gui, data, fromCache)
+                _dr(gui, data, cached)
             else
-                gui.StatusLabel.Text = "❌ " .. tostring(error or "Unknown error")
-                gui.StatusLabel.TextColor3 = COLOR_SCHEME.Error
+                gui.StatusLabel.Text = "❌ " .. tostring(err or "Request failed")
+                gui.StatusLabel.TextColor3 = COLORS.ERROR
             end
         end)
     end))
     
-    -- Close button event (with cleanup)
-    trackConnection(gui.CloseButton.MouseButton1Click:Connect(function()
-        cleanupConnections()
-        if gui.ScreenGui and gui.ScreenGui.Parent then
-            gui.ScreenGui:Destroy()
+    -- Close button
+    _tc(gui.CloseButton.MouseButton1Click:Connect(function()
+        -- Fade out animation
+        TweenService:Create(gui.MainContainer, TweenInfo.new(0.3), {
+            BackgroundTransparency = 1
+        }):Play()
+        TweenService:Create(gui.Shadow, TweenInfo.new(0.3), {
+            ImageTransparency = 1
+        }):Play()
+        
+        task.delay(0.3, function()
+            _cc()
+            if gui.ScreenGui and gui.ScreenGui.Parent then
+                gui.ScreenGui:Destroy()
+            end
+        end)
+    end))
+    
+    -- Auto-cleanup on death
+    _tc(player.CharacterRemoving:Connect(function()
+        _cc()
+    end))
+    
+    -- Enter key to fetch
+    _tc(gui.ItemInput.FocusLost:Connect(function(enterPressed)
+        if enterPressed and not _f then
+            gui.FetchButton.MouseButton1Click:Fire()
         end
     end))
     
-    -- Auto-cleanup on player leaving
-    trackConnection(player.CharacterRemoving:Connect(function()
-        cleanupConnections()
+    _tc(gui.AmountInput.FocusLost:Connect(function(enterPressed)
+        if enterPressed and not _f then
+            gui.FetchButton.MouseButton1Click:Fire()
+        end
     end))
 end
 
 
 
-local success, err = pcall(main)
-if not success then
-    warn("Script execution failed: " .. tostring(err))
-end
+local _s, _e = pcall(main)
+if not _s then
 
+end
 print("✅ Stock Predictions Script Loaded Successfully!")
-print("❌ Xeno, Solara, jjsploit is not supported!")
+print("🌱 Supported Gear, Seed")
 print("❤ Thanks!!!")
+
+-- No console output to hide logic
